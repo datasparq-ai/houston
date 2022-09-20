@@ -1,0 +1,10 @@
+{
+  "n": "test-plan-complex",
+  "s": [
+    {"n": "stage-1a"},
+    {"n": "stage-1b"},
+    {"n": "stage-2a", "u": ["stage-1a", "stage-1b"]},
+    {"n": "stage-2b", "u": ["stage-1b"]},
+    {"n": "stage-3", "u": ["stage-2a"]}
+  ]
+}

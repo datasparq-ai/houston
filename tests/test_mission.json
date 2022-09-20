@@ -1,0 +1,23 @@
+{
+  "n": "test-plan",
+  "s": [
+    {
+      "n": "stage-1",
+      "a": "my-function",
+      "p": {
+        "foo": "bar"
+      }
+    },
+    {
+      "n": "stage-2",
+      "u": ["stage-1"],
+      "a": "my-function",
+      "p": {
+        "foo": "300"
+      }
+    }
+  ],
+  "p": {
+    "date": "2016-04-01"
+  }
+}

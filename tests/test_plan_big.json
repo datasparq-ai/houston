@@ -1,0 +1,26 @@
+{
+  "name": "test-plan-big",
+  "stages": [
+{"name": "s0", "downstream": ["s1a", "s1b", "s1c", "s1d", "s1e", "s1f", "s1g", "s1h", "s1i", "s1j"]},
+{"name": "s1a", "downstream": ["s2a"]},
+{"name": "s1b", "downstream": ["s2b"]},
+{"name": "s1c", "downstream": ["s2c"]},
+{"name": "s1d", "downstream": ["s2d"]},
+{"name": "s1e", "downstream": ["s2e"]},
+{"name": "s1f", "downstream": ["s2f"]},
+{"name": "s1g", "downstream": ["s2g"]},
+{"name": "s1h", "downstream": ["s2h"]},
+{"name": "s1i", "downstream": ["s2i"]},
+{"name": "s1j", "downstream": ["s2j"]},
+{"name": "s2a"},
+{"name": "s2b"},
+{"name": "s2c"},
+{"name": "s2d"},
+{"name": "s2e"},
+{"name": "s2f"},
+{"name": "s2g"},
+{"name": "s2h"},
+{"name": "s2i"},
+{"name": "s2j"},
+{"name": "s3", "upstream": ["s2a", "s2b", "s2c", "s2d", "s2e", "s2f", "s2g", "s2h", "s2i", "s2j"]}
+]}

@@ -1,0 +1,12 @@
+{
+  "name": "test-plan-deleted",
+  "stages": [
+    {
+      "name": "stage-1"
+    },
+    {
+      "name": "stage-2",
+      "upstream": ["stage-1"]
+    }
+  ]
+}

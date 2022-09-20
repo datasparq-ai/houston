@@ -1,0 +1,11 @@
+name: test-plan
+stages:
+  - name: stage-1
+    service: "my-function"
+    params:
+      foo: bar
+  - name: stage-2
+    upstream: [ "stage-1" ]
+    service: my-function
+    params:
+      foo: 300

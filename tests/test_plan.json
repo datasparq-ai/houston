@@ -1,0 +1,23 @@
+{
+  "name": "test-plan",
+  "stages": [
+    {
+      "name": "stage-1",
+      "service": "my-function",
+      "params": {
+        "foo": "bar"
+      }
+    },
+    {
+      "name": "stage-2",
+      "upstream": ["stage-1"],
+      "service": "my-function",
+      "params": {
+        "foo": "300"
+      }
+    }
+  ],
+  "params": {
+    "date": "2016-04-01"
+  }
+}
