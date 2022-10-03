@@ -189,8 +189,8 @@ func (client *Client) CreateKey(id, name, password string) (string, error) {
   return createdKey, err
 }
 
-func (client *Client) GetPlan(name string) (string, error) {
-  var plan string
+func (client *Client) GetPlan(name string) (model.Plan, error) {
+  var plan model.Plan
   resp := client.get("/plans/" + name)
   err := parseResponse(resp, &plan)
   return plan, err

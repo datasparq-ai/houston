@@ -214,7 +214,15 @@ func TestAPI_DeletePlan(t *testing.T) {
   c := client.New("test", "")
   c.SavePlan("tests/test_plan_deleted.json")
 
-  err := c.DeletePlan("test-plan-deleted")
+  p, err := c.GetPlan("test-plan-deleted")
+  if err != nil {
+    t.Fatalf(`Couldn't get saved plan`)
+  }
+  if p.Name != "test-plan-deleted" && len(p.Stages) != 2 {
+    t.Fatalf(`Client.GetPlan didn't return the right plan`)
+  }
+
+  err = c.DeletePlan("test-plan-deleted")
   if err != nil {
     t.Fatalf(`Couldn't delete saved plan`)
   }
