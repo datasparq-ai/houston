@@ -36,7 +36,7 @@ Then go to http://localhost:8000. Enter your Houston key 'quickstart'.
 If you have [go](https://golang.org/doc/install) installed you can build the binary yourself and install with:
 
 ```bash
-go get github.com/datasparq-ai/houston
+go install github.com/datasparq-ai/houston
 ```
 
 ### Contributing 

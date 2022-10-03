@@ -12,7 +12,12 @@ import (
 
 func (client *Client) request(method, path string, body []byte) *http.Response {
   url := client.BaseUrl + path
-  req, _ := http.NewRequest(method, url, bytes.NewBuffer(body))
+  req, err := http.NewRequest(method, url, bytes.NewBuffer(body))
+  if err != nil {
+    fmt.Println("Got an error creating request to url: " + url)
+    // TODO: return error
+    panic(err)
+  }
   req.Header.Set("x-access-key", client.Key)
   req.Header.Set("Content-Type", "application/json")
 
@@ -40,6 +45,8 @@ func (client *Client) request(method, path string, body []byte) *http.Response {
       req.Header.Set("Content-Type", "application/json")
       resp, err = httpClient.Do(req)
       if err != nil {
+        fmt.Println("Got an error when requesting url: " + url)
+        // TODO: return error
         panic(err)
       }
     }
@@ -97,23 +104,4 @@ func (client *Client) postPlans(reqBody []byte) error {
     return handleErrorResponse(responseBody)
   }
   return nil
-}
-
-func (client *Client) DeletePlan(name string) error {
-  resp := client.delete("/plans/" + name)
-  responseBody, err := ioutil.ReadAll(resp.Body)
-  if err != nil {
-    return handleInvalidResponse(err)
-  }
-  if resp.StatusCode != 200 {
-    return handleErrorResponse(responseBody)
-  }
-  return nil
-}
-
-func (client *Client) ListPlans() ([]string, error) {
-  var plans []string
-  resp := client.get("/plans")
-  err := parseResponse(resp, &plans)
-  return plans, err
 }

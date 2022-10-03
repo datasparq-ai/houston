@@ -44,6 +44,7 @@ func New(key string, baseUrl string) Client {
     }
   } else {
     baseUrl = strings.TrimSuffix(baseUrl, "/")
+    // todo: verify BaseURL: must start with http
   }
 
   // automatically use admin credentials stored in environment
@@ -186,4 +187,30 @@ func (client *Client) CreateKey(id, name, password string) (string, error) {
   }
   createdKey, err := client.postKey(key)
   return createdKey, err
+}
+
+func (client *Client) GetPlan(name string) (string, error) {
+  var plan string
+  resp := client.get("/plans/" + name)
+  err := parseResponse(resp, &plan)
+  return plan, err
+}
+
+func (client *Client) DeletePlan(name string) error {
+  resp := client.delete("/plans/" + name)
+  responseBody, err := ioutil.ReadAll(resp.Body)
+  if err != nil {
+    return handleInvalidResponse(err)
+  }
+  if resp.StatusCode != 200 {
+    return handleErrorResponse(responseBody)
+  }
+  return nil
+}
+
+func (client *Client) ListPlans() ([]string, error) {
+  var plans []string
+  resp := client.get("/plans")
+  err := parseResponse(resp, &plans)
+  return plans, err
 }
