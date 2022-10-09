@@ -366,6 +366,7 @@ func (a *API) initDashboard() {
   if a.config.Dashboard.Enabled {
     if a.config.Dashboard.Src == "" {
       // TODO: host on callhouston.io
+      //html = []byte(`<html><link rel="stylesheet" type="text/css" href="http://localhost:5000/style.css"><script src="http://localhost:5000/console.js"></script></html>`)
       html = []byte(`<html><link rel="stylesheet" type="text/css" href="https://game-ii.s3.eu-west-2.amazonaws.com/dash-default/style.css"><script src="https://game-ii.s3.eu-west-2.amazonaws.com/dash-default/console.js"></script></html>`)
       a.router.HandleFunc("/console", func(w http.ResponseWriter, r *http.Request) {
         w.Write(html)

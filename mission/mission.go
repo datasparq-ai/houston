@@ -145,15 +145,17 @@ func (m *Mission) Print() {
 }
 
 // Report prints a text alternative to the mission dashboard.
-func (m *Mission) Report() {
-  fmt.Print(m.Name, "/", m.Id)
+func (m *Mission) Report() string {
+  reportText := ""
+  reportText += fmt.Sprint(m.Name, "/", m.Id)
   if m.isComplete {
-    fmt.Print(" [complete]")
+    reportText += " [complete]"
   }
-  fmt.Print("\n")
+  reportText += "\n"
   for _, s := range m.Stages {
-    fmt.Println(stateIcons[s.State], s.Name, s.PrintDuration())
+    reportText += fmt.Sprintln(stateIcons[s.State], s.Name, s.PrintDuration())
   }
+  return reportText
 }
 
 // exists so that one can find a stage within a stage list without needing a mission.

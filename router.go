@@ -3,6 +3,7 @@ package main
 import (
   "encoding/json"
   "fmt"
+  "github.com/datasparq-ai/houston/mission"
   "github.com/datasparq-ai/houston/model"
   "github.com/gorilla/mux"
   "io/ioutil"
@@ -49,6 +50,29 @@ func (a *API) GetMission(w http.ResponseWriter, r *http.Request) {
   }
   w.Header().Set("Content-Type", "application/json")
   w.Write([]byte(missionString))
+}
+
+func (a *API) GetMissionReport(w http.ResponseWriter, r *http.Request) {
+  vars := mux.Vars(r)
+  missionId := vars["id"]
+  key := r.Header.Get("x-access-key") // key has been checked by checkKey middleware
+  missionString, ok := a.db.Get(key, missionId)
+  if !ok {
+    // TODO: mission not found error
+    err := fmt.Errorf("mission with id '%v' not found", missionId)
+    handleError(err, w)
+    return
+  }
+  m, err := mission.NewFromJSON([]byte(missionString))
+  if err != nil {
+    handleError(err, w)
+  }
+
+  report := m.Report()
+
+  payload, _ := json.Marshal(model.Success{Message: report})
+  w.Header().Set("Content-Type", "application/json")
+  w.Write(payload)
 }
 
 // GetMissions returns a list of the IDs of all active (non archived) missions
@@ -346,6 +370,7 @@ func (a *API) initRouter() {
   apiRouter.HandleFunc("/missions", a.PostMission).Methods("POST")
   apiRouter.HandleFunc("/missions/{id}/stages/{name}", a.PostMissionStage).Methods("POST")
   apiRouter.HandleFunc("/missions/{id}", a.GetMission).Methods("GET")
+  apiRouter.HandleFunc("/missions/{id}/report", a.GetMissionReport).Methods("GET")
   apiRouter.HandleFunc("/missions/{id}", a.DeleteMission).Methods("DELETE")
   apiRouter.HandleFunc("/completed", a.GetCompletedMissions).Methods("GET")
 
