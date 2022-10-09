@@ -64,7 +64,6 @@ func (client *Client) GetMission(missionId string) (model.Mission, error) {
   if err != nil {
     return model.Mission{}, err // TODO: format error into helpful message
   }
-  fmt.Println(string(responseBody))
   if resp.StatusCode > 200 {
     var errorResponse model.Error
     err = json.Unmarshal(responseBody, &errorResponse)
@@ -145,6 +144,17 @@ func (client *Client) ListActiveMissions() ([]string, error) {
     return missions, handleInvalidResponse(err)
   }
   return missions, nil
+}
+
+func (client *Client) DeleteMission(missionId string) (model.Mission, error) {
+  mission, err := client.GetMission(missionId)
+  if err != nil {
+    return mission, err
+  }
+  var deleteResponse model.Success
+  res := client.delete("/missions/" + missionId)
+  err = parseResponse(res, &deleteResponse)
+  return mission, err
 }
 
 func (client *Client) StartStage(mission, stage string, ignoreDependencies bool) (model.MissionStageStateUpdateResponse, error) {

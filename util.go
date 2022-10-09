@@ -10,18 +10,8 @@ import (
 
 var letters = []rune("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
-//// nameToKey maps the full names plan attributes to the equivalent short name used in a mission.
-//// Only attributes seen both in plans and missions are included.
-//var nameToKey = map[string]string{
-//  "name":     "n",
-//  "stages":   "s",
-//  "services": "a",
-//}
-//
-//var stagesNameToKey = map[string]string{
-//  "upstream":   "u",
-//  "downstream": "d",
-//}
+// these characters are not allowed in plan names or mission IDs
+var disallowedCharacters = []rune("| ,\n\r\t%&<>{}[]\\?;\"'`")
 
 // used to create API keys
 func createRandomString(n int) string {
@@ -49,9 +39,7 @@ func NewMissionFromPlan(plan *model.Plan) *mission.Mission {
       Upstream:   plan.Stages[stageIdx].Upstream,
       Downstream: plan.Stages[stageIdx].Downstream,
     }
-
     stages = append(stages, &s)
-    fmt.Println(s.Upstream, s.Downstream)
   }
 
   m := mission.New(plan.Name, stages)

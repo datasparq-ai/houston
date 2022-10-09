@@ -37,16 +37,12 @@ func (d *RedisDatabase) CreateKey(key string) error {
 
 // DeleteKey completely removes an API key and all associated plans and missions from the database
 func (d *RedisDatabase) DeleteKey(key string) error {
-  allKeys, _ := d.client.Keys(d.ctx, "*").Result()
-  fmt.Println(allKeys)
   allKeys, err := d.client.Keys(d.ctx, key+"|*").Result()
   if err != nil {
     return err
   }
-  fmt.Println("Delete", allKeys)
 
   for _, k := range allKeys {
-    fmt.Println("Delete", k)
     err = d.client.Del(d.ctx, k).Err()
   }
   return err
@@ -109,32 +105,16 @@ func (d *RedisDatabase) ListKeys() ([]string, error) {
   return value, nil
 }
 
-func (d *RedisDatabase) ListPlans(key string) ([]string, error) {
-  value, err := d.client.Keys(d.ctx, key+"|p|*").Result()
-  if err != nil {
-    return value, err
-  }
-  for i, s := range value {
-    value[i] = strings.Replace(s, key+"|p|", "", 1)
-  }
-  return value, nil
-}
-
-func (d *RedisDatabase) ListMissions(key string) ([]string, error) {
-  value, err := d.client.Keys(d.ctx, key+"|*").Result()
+func (d *RedisDatabase) List(key string, prefix string) ([]string, error) {
+  value, err := d.client.Keys(d.ctx, key+"|"+prefix+"*").Result()
   if err != nil {
     return value, err
   }
   prefixLen := len(key) + 1
-  var missions []string
-  for _, s := range value {
-    s = s[prefixLen:]
-    if strings.Index(s, "|") > -1 || s == "n" || s == "u" {
-      continue // filter out plans and reserved keys
-    }
-    missions = append(missions, s)
+  for i, s := range value {
+    value[i] = s[prefixLen:]
   }
-  return missions, nil
+  return value, nil
 }
 
 // DoTransaction watches a key, gets its value, performs an operation, and sets it again

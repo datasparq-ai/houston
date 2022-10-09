@@ -137,7 +137,7 @@ func (a *API) initWebSocket() {
     go client.writePump()
     go client.readPump()
 
-    a.ws <- message{key, "notice", []byte("Test message")}
+    a.ws <- message{key, "notice", []byte("New client connected")}
 
   })
 }

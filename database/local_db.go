@@ -3,6 +3,7 @@ package database
 import (
   "fmt"
   "github.com/datasparq-ai/houston/model"
+  "strings"
   "sync"
 )
 
@@ -63,13 +64,15 @@ func (d *LocalDatabase) Delete(key string, field string) bool {
   return true
 }
 
-func (d *LocalDatabase) listFields(key string) ([]string, error) {
+func (d *LocalDatabase) List(key, prefix string) ([]string, error) {
   if _, ok := d.kv[key]; !ok {
     return []string{}, fmt.Errorf("key '%v' not found", key)
   }
   var fieldList []string
   for field := range d.kv[key] {
-    fieldList = append(fieldList, field)
+    if strings.HasPrefix(field, prefix) {
+      fieldList = append(fieldList, field)
+    }
   }
   return fieldList, nil
 }
@@ -82,45 +85,7 @@ func (d *LocalDatabase) ListKeys() ([]string, error) {
   return keyList, nil
 }
 
-func (d *LocalDatabase) ListPlans(key string) ([]string, error) {
-  allFields, err := d.listFields(key)
-  if err != nil {
-    return allFields, err
-  }
-  var plans []string
-  for _, field := range allFields {
-    if len(field) >= 2 && field[:2] == "p|" {
-      plans = append(plans, field[2:])
-    }
-  }
-  return plans, nil
-}
-
-func (d *LocalDatabase) ListMissions(key string) ([]string, error) {
-  allFields, err := d.listFields(key)
-  if err != nil {
-    return allFields, err
-  }
-  var missions []string
-Loop:
-  for _, field := range allFields {
-    // remove system keys
-    for _, k := range []string{"n", "u"} {
-      if field == k {
-        continue Loop
-      }
-    }
-    // remove plans
-    if len(field) >= 2 && field[:2] == "p|" {
-      continue Loop
-    }
-    missions = append(missions, field)
-  }
-  return missions, nil
-}
-
 func (d *LocalDatabase) DoTransaction(transactionFunc func(string) (string, error), key string, field string) error {
-
   d.mux[key].Lock()
   defer d.mux[key].Unlock()
 

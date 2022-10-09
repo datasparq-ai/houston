@@ -7,6 +7,7 @@ import (
   "github.com/gorilla/mux"
   "io/ioutil"
   "net/http"
+  "strings"
 )
 
 func handleError(err error, w http.ResponseWriter) {
@@ -53,11 +54,23 @@ func (a *API) GetMission(w http.ResponseWriter, r *http.Request) {
 // GetMissions returns a list of the IDs of all active (non archived) missions
 func (a *API) GetMissions(w http.ResponseWriter, r *http.Request) {
   key := r.Header.Get("x-access-key") // key has been checked by checkKey middleware
-  missions, err := a.ListActiveMissions(key)
+  missions, err := a.AllActiveMissions(key)
   if err != nil {
     handleError(err, w)
     return
   }
+  payload, _ := json.Marshal(missions)
+  w.Header().Set("Content-Type", "application/json")
+  w.Write(payload)
+}
+
+// GetPlanMissions returns a list of the IDs of all active (non archived) missions for the plan
+func (a *API) GetPlanMissions(w http.ResponseWriter, r *http.Request) {
+  key := r.Header.Get("x-access-key") // key has been checked by checkKey middleware
+  vars := mux.Vars(r)
+  plan := vars["name"]
+  missions := a.ActiveMissions(key, plan)
+
   payload, _ := json.Marshal(missions)
   w.Header().Set("Content-Type", "application/json")
   w.Write(payload)
@@ -74,7 +87,6 @@ func (a *API) GetMissions(w http.ResponseWriter, r *http.Request) {
 // @Failure 404,500 {object} model.Error
 // @Router /v1/missions [post]
 func (a *API) PostMission(w http.ResponseWriter, r *http.Request) {
-  fmt.Printf("$")
   reqBody, _ := ioutil.ReadAll(r.Body)
   var mission model.MissionCreateRequest
   err := json.Unmarshal(reqBody, &mission)
@@ -96,6 +108,42 @@ func (a *API) PostMission(w http.ResponseWriter, r *http.Request) {
   w.Header().Set("Content-Type", "application/json")
   w.Write(payload)
 
+}
+
+func (a *API) DeleteMission(w http.ResponseWriter, r *http.Request) {
+
+  vars := mux.Vars(r)
+  missionId := vars["id"]
+  key := r.Header.Get("x-access-key") // key has been checked by checkKey middleware
+
+  missionString, ok := a.db.Get(key, missionId)
+  if !ok {
+    return
+  }
+  var m model.Mission
+  // there is unlikely to be an error here, but if there is just skip removing mission from active list
+  err := json.Unmarshal([]byte(missionString), &m)
+  if err == nil {
+    // remove from active missions
+    activeStr, _ := a.db.Get(key, "a|"+m.Name)
+    activeStr = strings.Replace(","+activeStr+",", ","+missionId+",", "", 1)
+    activeStr = strings.Trim(activeStr, ",")
+    a.db.Set(key, "a|"+m.Name, activeStr)
+  }
+
+  // remove from completed missions
+  completeString, ok := a.db.Get(key, "c")
+  completeString = strings.Replace(","+completeString+",", ","+missionId+",", "", 1)
+  completeString = strings.Trim(completeString, ",")
+  a.db.Set(key, "c", completeString)
+
+  // delete mission
+  a.db.Delete(key, missionId)
+
+  payload, _ := json.Marshal(model.Success{Message: "Deleted " + missionId})
+
+  w.Header().Set("Content-Type", "application/json")
+  w.Write(payload)
 }
 
 // PostMissionStage updates the state of a stage in an in-progress mission.
@@ -128,6 +176,19 @@ func (a *API) PostMissionStage(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// GetCompletedMissions returns a list of the IDs of all completed (non archived) missions.
+// These missions will also be in the list returned by GetMissions.
+// This list is stored in a separate redis key for performance reasons.
+// Completed missions should be deleted after being archived by the user to minimise the amount of storage required by
+// the database.
+func (a *API) GetCompletedMissions(w http.ResponseWriter, r *http.Request) {
+  key := r.Header.Get("x-access-key") // key has been checked by checkKey middleware
+  missions := a.CompletedMissions(key)
+  payload, _ := json.Marshal(missions)
+  w.Header().Set("Content-Type", "application/json")
+  w.Write(payload)
+}
+
 func (a *API) PostPlan(w http.ResponseWriter, r *http.Request) {
   reqBody, _ := ioutil.ReadAll(r.Body)
   var plan model.Plan
@@ -145,12 +206,15 @@ func (a *API) PostPlan(w http.ResponseWriter, r *http.Request) {
   }
 }
 
+// DeletePlan deletes a plan and all its missions from the database
 func (a *API) DeletePlan(w http.ResponseWriter, r *http.Request) {
   vars := mux.Vars(r)
   planName := vars["name"]
   key := r.Header.Get("x-access-key") // key has been checked by checkKey middleware
 
   wasDeleted := a.db.Delete(key, "p|"+planName)
+
+  // TODO: delete active missions, and delete active key
 
   if !wasDeleted {
     // TODO: what possible reasons are there for this error? Will it ever happen?
@@ -197,15 +261,12 @@ func (a *API) checkKey(next http.Handler) http.Handler {
       return
     }
     // check that key exists
-    usage, ok := a.db.Get(key, "u")
+    _, ok := a.db.Get(key, "u")
     if !ok {
       err := &model.KeyNotFoundError{}
       handleError(err, w)
       return
     }
-
-    // TODO: check usage for this key
-    fmt.Println(usage)
 
     next.ServeHTTP(w, r)
   })
@@ -275,16 +336,18 @@ func (a *API) initRouter() {
 
   apiRouter := router.PathPrefix("/api/v1").Subrouter()
   apiRouter.Use(a.checkKey)
-  apiRouter.HandleFunc("/plans", a.GetPlans).Methods("GET")
-  apiRouter.HandleFunc("/plans", a.PostPlan).Methods("POST")
   //apiRouter.HandleFunc("/plans/{name}", a.PutPlan).Methods("PUT")
+  apiRouter.HandleFunc("/plans/", a.GetPlans).Methods("GET")
+  apiRouter.HandleFunc("/plans", a.PostPlan).Methods("POST")
+  apiRouter.HandleFunc("/plans/{name}/missions", a.GetPlanMissions).Methods("GET")
   apiRouter.HandleFunc("/plans/{name}", a.GetPlan).Methods("GET")
   apiRouter.HandleFunc("/plans/{name}", a.DeletePlan).Methods("DELETE")
+  apiRouter.HandleFunc("/missions/", a.GetMissions).Methods("GET")
+  apiRouter.HandleFunc("/missions", a.PostMission).Methods("POST")
   apiRouter.HandleFunc("/missions/{id}/stages/{name}", a.PostMissionStage).Methods("POST")
   apiRouter.HandleFunc("/missions/{id}", a.GetMission).Methods("GET")
-  //apiRouter.HandleFunc("/missions/{id}", a.DeleteMission).Methods("DELETE")  // TODO: delete mission
-  apiRouter.HandleFunc("/missions", a.PostMission).Methods("POST")
-  apiRouter.HandleFunc("/missions/", a.GetMissions).Methods("GET")
+  apiRouter.HandleFunc("/missions/{id}", a.DeleteMission).Methods("DELETE")
+  apiRouter.HandleFunc("/completed", a.GetCompletedMissions).Methods("GET")
 
   //apiKeyRouter.HandleFunc("/password", a.PostPassword).Methods("GET")  // TODO: route to change password
 
@@ -292,6 +355,7 @@ func (a *API) initRouter() {
   apiKeyRouter.Use(a.checkAdminPassword)
   //apiKeyRouter.HandleFunc("", a.ListKeys).Methods("GET")  // TODO: check password
   //apiKeyRouter.HandleFunc("/{id}", a.GetKey).Methods("GET")  // TODO: check key (get description)
+  //apiKeyRouter.HandleFunc("/{id}", a.DeleteKey).Methods("DELETE")  // TODO
   apiKeyRouter.HandleFunc("", a.PostKey).Methods("POST")
 
   a.router = router

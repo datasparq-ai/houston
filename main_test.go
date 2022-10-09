@@ -19,13 +19,11 @@ func TestMain(m *testing.M) {
 
   api := New("")
   api.DeleteKey("test")
-  api.CreateKey("test", "unittest")
+  api.CreateKey("test", "unittest-1")
   go api.Run()
 
   code := m.Run() // run tests
 
-  missions, _ := api.ListActiveMissions("test")
-  fmt.Println(missions)
   api.DeleteKey("test") // clean up
   os.Exit(code)
 }
@@ -181,7 +179,11 @@ func TestAPI_SavePlan(t *testing.T) {
     t.Fatalf(`Couldn't create mission with newly saved plan`)
   }
 
-  m, _ := c.GetMission(res.Id)
+  m, err := c.GetMission(res.Id)
+  if err != nil {
+    t.Fatalf(`Couldn't get mission`)
+  }
+
   stageCount := 0
   for _, stage := range m.Stages {
     if stage.Name == "stage-1" || stage.Name == "stage-2" {
@@ -342,4 +344,64 @@ func TestAPI_ConcurrentMissionUpdates(t *testing.T) {
   if err != nil {
     t.Fatalf("Couldn't start final stage (this means concurrent stages failed)")
   }
+}
+
+// test completed mission + active missions + delete mission
+func TestAPI_CompletedMissions(t *testing.T) {
+
+  api := New("")
+  api.config.Port = "8002"
+  go api.Run()
+
+  key, err := api.CreateKey("", "test-delete") // generate random key
+
+  c := client.New(key, "http://localhost:8002/api/v1")
+  completedMissions := api.CompletedMissions(key)
+  if len(completedMissions) != 0 {
+    t.Fatalf("New key has completed missions.")
+  }
+
+  c.SavePlan("tests/test_plan.json")
+  active := api.ActiveMissions(key, "test-plan")
+  if len(active) != 0 {
+    t.Fatalf("New plan has active missions.")
+  }
+
+  res, err := c.CreateMission("test-plan", "CompletedMissions")
+  if err != nil {
+    panic(err)
+  }
+  active = api.ActiveMissions(key, "test-plan")
+  if len(active) != 1 || active[0] != res.Id {
+    t.Fatalf("Active mission is not listed as an active mission.")
+  }
+
+  // complete the mission
+  c.StartStage(res.Id, "stage-1", false)
+  c.FinishStage(res.Id, "stage-1", false)
+  c.SkipStage(res.Id, "stage-2")
+
+  completedMissions = api.CompletedMissions(key)
+  if len(completedMissions) != 1 || completedMissions[0] != res.Id {
+    t.Fatalf("Completed mission is not listed as a completed mission.")
+  }
+
+  deleteRes, err := c.DeleteMission(res.Id)
+  if err != nil {
+    t.Fatalf("Got an error deleting mission.")
+  }
+  if deleteRes.Id != res.Id {
+    t.Fatalf("Deleted mission ID doesn't match.")
+  }
+
+  active = api.ActiveMissions(key, "test-plan")
+  if len(active) != 0 {
+    t.Fatalf("Deleted mission is still listed as an active mission.")
+  }
+  completedMissions = api.CompletedMissions(key)
+  if len(completedMissions) != 0 {
+    t.Fatalf("Deleted mission is still listed as a completed mission.")
+  }
+
+  api.DeleteKey(key)
 }

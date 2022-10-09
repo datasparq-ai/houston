@@ -20,7 +20,7 @@ import (
   "time"
 )
 
-var reservedKeys = []string{"u", "n"}
+var reservedKeys = []string{"u", "n", "a", "c"}
 
 type API struct {
   db     database.Database
@@ -103,8 +103,9 @@ func (a *API) CreateKey(key string, name string) (string, error) {
 
   err1 := a.db.Set(key, "n", name)
   err2 := a.db.Set(key, "u", "0") // usage
+  err3 := a.db.Set(key, "c", "")  // completed missions
 
-  if err1 != nil || err2 != nil {
+  if err1 != nil || err2 != nil || err3 != nil {
     return "", err1
   }
 
@@ -147,6 +148,10 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
     return "", err // TODO: catch json/schema errors and give helpful response
   }
 
+  if strings.ContainsAny(plan.Name, string(disallowedCharacters)) {
+    return "", fmt.Errorf("plan with name '%v' is not allowed because it contains invalid characters", plan.Name)
+  }
+
   // convert plan to mission
   m := NewMissionFromPlan(&plan)
 
@@ -182,11 +187,8 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
       }
     }
   } else {
-    for _, r := range missionId {
-      switch r {
-      case '|':
-        return "", fmt.Errorf("mission with id '%v' is not allowed because it contains invalid characters", missionId)
-      }
+    if strings.ContainsAny(missionId, string(disallowedCharacters)) {
+      return "", fmt.Errorf("mission with id '%v' is not allowed because it contains invalid characters", missionId)
     }
     // check for disallowed ids (reserved keys)
     for _, k := range reservedKeys {
@@ -203,14 +205,48 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
   m.Start = time.Now()
 
   a.db.Set(key, m.Id, string(m.Bytes()))
+
+  // add to active missions - this key may not exist if plan has never been created before
+  activeMissions, _ := a.db.Get(key, "a|"+m.Name)
+  if activeMissions != "" {
+    activeMissions += ","
+  }
+  activeMissions += m.Id
+  err1 := a.db.Set(key, "a|"+m.Name, activeMissions)
+  if err1 != nil {
+    panic(err1) // TODO
+  }
+
   a.ws <- message{key, "missionCreation", m.Bytes()}
 
   return m.Id, nil
 }
 
-// ListActiveMissions finds all missions in the database for the key provided.
-func (a *API) ListActiveMissions(key string) ([]string, error) {
-  missions, err := a.db.ListMissions(key)
+// ActiveMissions finds all missions for a plan. If plan doesn't exist then an empty list is returned.
+func (a *API) ActiveMissions(key string, plan string) []string {
+  missions, _ := a.db.Get(key, "a|"+plan)
+  if missions == "" {
+    return []string{}
+  }
+  return strings.Split(missions, ",")
+}
+
+// AllActiveMissions finds all missions in the database for the key provided.
+// Inactive/archived missions are not (or should not be) stored in the API database.
+// Should only be used to check that there aren't any orphaned missions as this is less
+// efficient than using ActiveMissions.
+func (a *API) AllActiveMissions(key string) ([]string, error) {
+  var missions []string
+  allKeys, err := a.db.List(key, "")
+  if err != nil {
+    return missions, err
+  }
+  for _, s := range allKeys {
+    if strings.Index(s, "|") > -1 || s == "n" || s == "u" || s == "c" {
+      continue // filter out plans and reserved keys
+    }
+    missions = append(missions, s)
+  }
   return missions, err
 }
 
@@ -267,13 +303,29 @@ func (a *API) UpdateStageState(key string, missionId string, stage string, state
     a.ws <- message{key, "missionUpdate", missionBytes}
   }
 
+  // if the mission is complete, add it to the list of missions to be cleaned up
+  if res.IsComplete {
+    a.ws <- message{key, "missionCompleted", missionBytes}
+    completedList := append(a.CompletedMissions(key), missionId)
+    completedListBytes := strings.Join(completedList, ",")
+    a.db.Set(key, "c", completedListBytes)
+  }
+
   return res, err
+}
+
+// CompletedMissions returns a list all missionIds that are completed so that they can be archived and deleted.
+func (a *API) CompletedMissions(key string) []string {
+  completedListString, ok := a.db.Get(key, "c")
+  if !ok || completedListString == "" { // this should never happen
+    return []string{}
+  }
+  completedList := strings.Split(completedListString, ",")
+  return completedList
 }
 
 // SavePlan stores a new plan in the database if that plan is valid. Current behaviour is to overwrite existing plans.
 func (a *API) SavePlan(key string, plan model.Plan) error {
-
-  // TODO: if plan already exists???
 
   // convert plan to mission for validation of graph only
   m := NewMissionFromPlan(&plan)
@@ -284,7 +336,13 @@ func (a *API) SavePlan(key string, plan model.Plan) error {
 
   planBytes, _ := json.Marshal(plan)
 
+  p, _ := a.db.Get(key, "p|"+plan.Name)
   err = a.db.Set(key, "p|"+plan.Name, string(planBytes))
+  // if plan already exists, do not re-create the 'active' key
+  if p == "" {
+    err = a.db.Set(key, "a|"+plan.Name, "")
+  }
+
   if err != nil {
     return err
   }
@@ -293,7 +351,10 @@ func (a *API) SavePlan(key string, plan model.Plan) error {
 }
 
 func (a *API) ListPlans(key string) ([]string, error) {
-  plans, err := a.db.ListPlans(key)
+  plans, err := a.db.List(key, "p")
+  for i, s := range plans {
+    plans[i] = strings.Replace(s, "p|", "", 1)
+  }
   return plans, err
 }
 
@@ -305,7 +366,10 @@ func (a *API) initDashboard() {
   if a.config.Dashboard.Enabled {
     if a.config.Dashboard.Src == "" {
       // TODO: host on callhouston.io
-      html = []byte(`<html><link rel="stylesheet" type="text/css" href="http://localhost:5000/default-style.css"><script src="http://localhost:5000/dashboard.js"></script></html>`)
+      html = []byte(`<html><link rel="stylesheet" type="text/css" href="https://game-ii.s3.eu-west-2.amazonaws.com/dash-default/style.css"><script src="https://game-ii.s3.eu-west-2.amazonaws.com/dash-default/console.js"></script></html>`)
+      a.router.HandleFunc("/console", func(w http.ResponseWriter, r *http.Request) {
+        w.Write(html)
+      })
     } else {
       html, err = ioutil.ReadFile(a.config.Dashboard.Src)
       if err != nil {

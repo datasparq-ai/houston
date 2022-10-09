@@ -28,7 +28,6 @@ func parseResponse(resp *http.Response, parsedResponse interface{}) error {
   if err != nil {
     return handleInvalidResponse(err) // TODO: format error
   }
-  // TODO: existing callhouston.io error codes
   if resp.StatusCode != 200 {
     if resp.StatusCode == http.StatusTooManyRequests {
       return fmt.Errorf("reached the maximum number of 429 error responses (100) when making request to " + resp.Request.URL.String())

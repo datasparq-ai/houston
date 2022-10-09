@@ -9,10 +9,14 @@ It is recommended to have one database per organisation to minimise costs, and o
 Redis Schema:
 
 ```yaml
-<api key>:                           # stored as json string, made as small as possible
-  n: "Moon Mission"                    # key/project/env name
-  u: 234234                            # usage (number of requests made to this key)
-<api key>|<mission id>:              # stored as json string, made as small as possible
+<api key>|n: "Moon Mission"          # key/project/env name
+<api key>|u: 3                       # usage (number of requests made to this key)
+<api key>|c: m1,m2                   # completed, stored as JSON string, list of completed mission IDs (strings)
+<api key>|p|<plan-name>:             # plan, stored as JSON string, identical to mission without stage timings
+  name: "apollo"                       # plan name
+  stages: []                           # list of stages
+<api key>|a|<plan-name>: m1,m2,m3    # active, list of active mission IDs (strings) for a plan
+<api key>|<mission id>:              # mission, stored as json string, made as small as possible
   n: apollo                            # name (plan name)
   i: <mission_id>                      # id
   s:                                   # stages
@@ -36,7 +40,6 @@ Redis Schema:
   e: 2022-03-03T16:35:47.559127Z       # end
   p:                                   # params (plan params + mission params)
     foo: bar
-<key>|p|<plan-name>: "{\"name\": \"apollo\", \"stages\": [] }"
 ```
 
 ### Local Database
@@ -75,8 +78,8 @@ Simple schema used by local db, which is of type `map[string]map[string]string`:
     e: 2022-03-03T16:35:47.559127Z       # end
     p:                                   # params (mission params)
       foo: bar
-  
-  plan|<plan-name>: "{\"name\": \"apollo\", \"stages\": [] }"
+  p|<plan-name>: "{\"name\": \"apollo\", \"stages\": [] }"
+  a|<plan-name>: m1,m2,m3
 
 ```
 
