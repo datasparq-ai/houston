@@ -19,14 +19,21 @@ func handleErrorResponse(responseBody []byte) error {
   if err != nil {
     return handleInvalidResponse(err)
   }
-  err = fmt.Errorf(errorResponse.Message)
+  switch errorResponse.Type {
+  case "model.KeyNotFoundError":
+    err = &model.KeyNotFoundError{}
+  case "model.PlanNotFoundError":
+    err = &model.PlanNotFoundError{}
+  default:
+    err = fmt.Errorf(errorResponse.Message)
+  }
   return err
 }
 
 func parseResponse(resp *http.Response, parsedResponse interface{}) error {
   responseBody, err := ioutil.ReadAll(resp.Body)
   if err != nil {
-    return handleInvalidResponse(err) // TODO: format error
+    return handleInvalidResponse(err)
   }
   if resp.StatusCode != 200 {
     if resp.StatusCode == http.StatusTooManyRequests {

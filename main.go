@@ -20,8 +20,6 @@ import (
   "time"
 )
 
-var reservedKeys = []string{"u", "n", "a", "c"}
-
 type API struct {
   db     database.Database
   router *mux.Router
@@ -69,8 +67,8 @@ func New(configPath string) API {
   }
 
   a.initRouter()
-  go a.initDashboard()
-  go a.initWebSocket()
+  a.initDashboard()
+  a.initWebSocket()
   return a
 }
 
@@ -140,6 +138,8 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
   } else {
     // else use the JSON provided as the temporary plan
     planBytes = []byte(planNameOrPlan)
+    // note: the plan will not be saved but will still exist in the database with a '|a' (active) attribute containing
+    // all the missions with this plan name. This allows these missions to still be loaded in the UI
   }
 
   var plan model.Plan
@@ -214,7 +214,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
   activeMissions += m.Id
   err1 := a.db.Set(key, "a|"+m.Name, activeMissions)
   if err1 != nil {
-    panic(err1) // TODO
+    return m.Id, err1 // TODO: how to recover from this err?
   }
 
   a.ws <- message{key, "missionCreation", m.Bytes()}
@@ -331,7 +331,7 @@ func (a *API) SavePlan(key string, plan model.Plan) error {
   m := NewMissionFromPlan(&plan)
   err := m.Validate()
   if err != nil {
-    panic(err)
+    return err
   }
 
   planBytes, _ := json.Marshal(plan)
@@ -342,7 +342,6 @@ func (a *API) SavePlan(key string, plan model.Plan) error {
   if p == "" {
     err = a.db.Set(key, "a|"+plan.Name, "")
   }
-
   if err != nil {
     return err
   }
@@ -350,10 +349,26 @@ func (a *API) SavePlan(key string, plan model.Plan) error {
   return nil
 }
 
+// ListPlans returns all plan names.
+// The complete list of plans is the union of all saved plans and all active plans
 func (a *API) ListPlans(key string) ([]string, error) {
+
   plans, err := a.db.List(key, "p")
   for i, s := range plans {
     plans[i] = strings.Replace(s, "p|", "", 1)
+  }
+
+  activePlans, err := a.db.List(key, "a|")
+Loop:
+  for _, s := range activePlans {
+    s = strings.Replace(s, "a|", "", 1)
+
+    for _, s2 := range plans {
+      if s == s2 {
+        continue Loop
+      }
+    }
+    plans = append(plans, s)
   }
   return plans, err
 }
@@ -364,13 +379,22 @@ func (a *API) initDashboard() {
   var html []byte
   var err error
   if a.config.Dashboard.Enabled {
+    // serve the houston console
+    a.router.HandleFunc("/console", func(w http.ResponseWriter, r *http.Request) {
+      w.Write([]byte(`<html><link rel="stylesheet" type="text/css" href="https://game-ii.s3.eu-west-2.amazonaws.com/console/main.css"><script src="https://game-ii.s3.eu-west-2.amazonaws.com/console/main.js"></script></html>`))
+    })
     if a.config.Dashboard.Src == "" {
-      // TODO: host on callhouston.io
-      //html = []byte(`<html><link rel="stylesheet" type="text/css" href="http://localhost:5000/style.css"><script src="http://localhost:5000/console.js"></script></html>`)
-      html = []byte(`<html><link rel="stylesheet" type="text/css" href="https://game-ii.s3.eu-west-2.amazonaws.com/dash-default/style.css"><script src="https://game-ii.s3.eu-west-2.amazonaws.com/dash-default/console.js"></script></html>`)
-      a.router.HandleFunc("/console", func(w http.ResponseWriter, r *http.Request) {
-        w.Write(html)
-      })
+      // TODO: host on static.callhouston.io
+      html = []byte(`<!doctype html><html lang="en"><head><meta charset="utf-8"/>
+ <link rel="icon" href="https://callhouston.io/houston-favicon.png"/>
+ <meta name="viewport" content="width=device-width,initial-scale=1"/>
+ <meta name="theme-color" content="#000000"/>
+ <meta name="description" content="Houston Dashboard"/>
+ <script defer="defer" src="https://game-ii.s3.eu-west-2.amazonaws.com/dashboard/main.js"></script>
+ <link href="https://game-ii.s3.eu-west-2.amazonaws.com/dashboard/main.css" rel="stylesheet">
+</head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>
+`)
+
     } else {
       html, err = ioutil.ReadFile(a.config.Dashboard.Src)
       if err != nil {
@@ -390,7 +414,7 @@ func (a *API) Run() {
   fmt.Printf("📡 Houston ready to receive calls on http://localhost:%v/api/v1\n", a.config.Port)
   err := http.ListenAndServe(":"+a.config.Port, a.router)
   if err != nil {
-    panic(err) // TODO: dump data in the event of failure
+    panic(err)
   }
 }
 
@@ -420,7 +444,7 @@ func main() {
         Use:   "version",
         Short: "Print the version number",
         Run: func(c *cobra.Command, args []string) {
-          fmt.Println("v0.1.0")
+          fmt.Println("v0.1.1")
         },
       }
       return
@@ -503,6 +527,18 @@ func main() {
       createCmd.Flags().StringVarP(&stages, "stages", "s", "", "Comma separated list of stage names to be used as the starting point for the mission. \nIf not provided, all stages with no upstream stages will be triggered")
       createCmd.Flags().StringVarP(&exclude, "exclude", "i", "", "Comma separated list of stage names to be excluded in the new mission")
       createCmd.Flags().StringVarP(&skip, "skip", "k", "", "Comma separated list of stage names to be skipped in the new mission")
+      return
+    }())
+
+    rootCmd.AddCommand(func() (createCmd *cobra.Command) {
+      createCmd = &cobra.Command{
+        Use:   "demo",
+        Short: "Run the API in demo mode",
+        Run: func(c *cobra.Command, args []string) {
+          demo(createCmd)
+        },
+      }
+      createCmd.Flags().String("config", "", "path to a config file")
       return
     }())
 

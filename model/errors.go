@@ -17,5 +17,17 @@ type PlanNotFoundError struct {
 }
 
 func (m *PlanNotFoundError) Error() string {
-  return "Plan '" + m.PlanName + "not found."
+  return "Plan '" + m.PlanName + "' not found."
+}
+
+type TooManyRequestsError struct{}
+
+func (m *TooManyRequestsError) Error() string {
+  return "Too many requests."
+}
+
+type BadCredentialsError struct{}
+
+func (m *BadCredentialsError) Error() string {
+  return "Incorrect username/password."
 }

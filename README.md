@@ -9,7 +9,13 @@ This repo contains the API server, go client, and CLI.
 
 ### Example Usage / Quickstart (1 minute)
 
-Start a local Houston server with the default config:
+Use `houston demo` to quickly run an end-to-end example workflow:
+
+```bash
+houston demo
+```
+
+Alternatively, start a local Houston server with the default config:
 
 ```bash
 houston api

@@ -1,8 +1,9 @@
 
 # Houston Docker Image 
 
-The official Houston docker image uses a Go base image and contains Houston and Redis.
-It can be used to quickly deploy the Houston API.
+The Houston docker image can be used to quickly deploy the Houston API or run the command line tool.
+
+Official Houston docker images are available on Docker Hub: [datasparq/houston:latest](https://hub.docker.com/r/datasparq/houston)
 
 ## Quickstart
 
@@ -10,9 +11,8 @@ Use the below commands to pull the container and run the API.
 This assumes you want to set an admin password using environment variables:
 
 ```bash
-docker pull <your repository>/houston
-docker cp my_config.yaml <your repository>/houston:/my_config.yaml
-docker run -p 8000:8000 --env HOUSTON_PASSWORD=change_me <your repository>/houston api
+docker pull datasparq/houston
+docker run -p 8000:8000 --env HOUSTON_PASSWORD=change_me datasparq/houston api
 ```
 
 _Note: The above will fail due to the password not being long enough._
@@ -23,4 +23,11 @@ From the Houston repository root:
 
 ```bash
 docker build -f docker/Dockerfile -t houston .
+```
+
+Push the image to your container registry:
+
+```bash
+docker tag houston <your repository>/houston
+docker push <your repository>/houston
 ```

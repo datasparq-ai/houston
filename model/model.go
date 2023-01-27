@@ -3,6 +3,7 @@ package model
 import "github.com/datasparq-ai/houston/mission"
 
 type Error struct {
+  Type    string `json:"type""`
   Message string `json:"message"`
 }
 
@@ -48,7 +49,12 @@ type Stage struct {
 
 type Plan struct {
   Name     string                 `json:"name" key:"n"`
-  Services []string               `json:"services" key:"a"`
+  Services []Service              `json:"services" key:"a"`
   Stages   []*Stage               `json:"stages" key:"s"`
   Params   map[string]interface{} `json:"params" key:"p"`
+}
+
+type Service struct {
+  Name    string                 `json:"name"`
+  Trigger map[string]interface{} `json:"trigger"`
 }

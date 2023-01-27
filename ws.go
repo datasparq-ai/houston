@@ -101,6 +101,14 @@ func (a *API) initWebSocket() {
   a.ws = ws.broadcast
   go ws.run()
 
+  //a.router.HandleFunc("/token", func(w http.ResponseWriter, r *http.Request) {
+  //  // TODO: create a temp token to correspond to the API key
+  //  token := createRandomString(40)
+  //  expiry := time.Now().Add(time.Hour)
+  //  a.router.
+  //    w.Write([]byte(token))
+  //})
+
   a.router.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 
     //TODO: websocket has no authentication methods so key in query params is being used.
@@ -148,7 +156,7 @@ func (a *API) initWebSocket() {
 // reads from this goroutine.
 func (c *WebSocketClient) readPump() {
   defer func() {
-    log.Printf("CONNECTION CLOSED - %s\n", c.id)
+    //log.Printf("CONNECTION CLOSED - %s\n", c.id)
     c.hub.unregister <- c
 
     c.conn.Close()
@@ -165,12 +173,12 @@ func (c *WebSocketClient) readPump() {
     _, msg, err := c.conn.ReadMessage()
     if err != nil {
       if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-        log.Printf("error: %v", err)
+        //log.Printf("error: %v", err)
       }
       break
     }
 
-    log.Printf("MESSAGE %s - %s\n", c.id, msg)
+    //log.Printf("MESSAGE %s - %s\n", c.id, msg)
 
     c.hub.broadcast <- message{c.key, "notice", msg}
   }

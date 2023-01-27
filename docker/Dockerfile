@@ -9,9 +9,6 @@ RUN go mod download && go mod verify
 COPY . .
 RUN go build -v -o /usr/local/bin ./...
 
-# install Redis
-
-
 EXPOSE 8000
 
 ENTRYPOINT ["houston"]

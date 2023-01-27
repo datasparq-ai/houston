@@ -67,8 +67,6 @@ func (m *Mission) Bytes() []byte {
 // - all referenced stages exist
 // - graph is not cyclic
 // - graph is contiguous (no orphaned stages)
-// - [ ] stage parameters within length limit (TODO)
-// - [ ] number of stages within limit (TODO)
 func (m *Mission) Validate() PlanValidationError {
 
   // are there more than 0 stages?
