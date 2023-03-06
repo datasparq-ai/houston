@@ -1,4 +1,4 @@
-FROM golang:1.18
+FROM golang:1.18-alpine
 
 WORKDIR /usr/src/houston
 
@@ -8,6 +8,9 @@ RUN go mod download && go mod verify
 
 COPY . .
 RUN go build -v -o /usr/local/bin ./...
+
+# install gettext utilities
+RUN apk add gettext
 
 EXPOSE 8000
 

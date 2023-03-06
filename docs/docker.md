@@ -11,7 +11,6 @@ Use the below commands to pull the container and run the API.
 This assumes you want to set an admin password using environment variables:
 
 ```bash
-docker pull datasparq/houston
 docker run -p 8000:8000 --env HOUSTON_PASSWORD=change_me datasparq/houston api
 ```
 
@@ -30,4 +29,19 @@ Push the image to your container registry:
 ```bash
 docker tag houston <your repository>/houston
 docker push <your repository>/houston
+```
+
+# Docker Compose
+
+To quickly deploy both Houston and Redis on the same machine, download the example 
+[docker-compose.yaml](../docker/docker-compose.yaml) file and run the following commands:
+
+```bash
+export HOUSTON_PASSWORD=change_me
+docker compose up -d
+```
+
+To destroy the deployment:
+```bash
+docker compose down
 ```

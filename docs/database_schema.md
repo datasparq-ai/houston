@@ -45,7 +45,7 @@ Redis Schema:
 ### Local Database
 
 The local database schema is shown below. The local db behaves exactly the same as the redis db, 
-but uses a go's `sync.Mutex` to stay transactional. 
+but uses go's `sync.Mutex` to stay transactional. 
 This may cause it to perform slower than the redis db for large plans or multiple users. 
 
 Simple schema used by local db, which is of type `map[string]map[string]string`:

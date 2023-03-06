@@ -1,0 +1,21 @@
+# See docs/docker.md
+
+version: '3.9'
+
+services:
+  houston:
+    image: datasparq/houston:latest
+    command:
+      - api
+    ports:
+      - '8000:80'
+    environment:
+      HOUSTON_PASSWORD: '${HOUSTON_PASSWORD}'
+    network_mode: host
+    depends_on:
+     - redis
+  redis:
+    image: redis:latest
+    ports:
+      - '6379:6379'
+    network_mode: host
