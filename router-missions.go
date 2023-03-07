@@ -12,6 +12,16 @@ import (
 	"strings"
 )
 
+// GetMission godoc
+// @Summary Gets mission from ID.
+// @Description Gets a existing mission using the ID provided.
+// @ID get-mission
+// @Tags Mission
+// @Param Header header string true "Houston Key"
+// @Param id path string true "The id of the mission"
+// @Success 200 {object} model.Success
+// @Failure 404,500 {object} model.Error
+// @Router /v1/missions/{id} [get]
 func (a *API) GetMission(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	missionId := vars["id"]
@@ -27,6 +37,16 @@ func (a *API) GetMission(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(missionString))
 }
 
+// GetMissionReport godoc
+// @Summary Gets a report of an existing mission.
+// @Description Returns a report of an existing mission for a given Houston Key.
+// @ID get-mission-report
+// @Tags Mission
+// @Param Header header string true "Houston Key"
+// @Param id path string true "The id of the mission"
+// @Success 200 {object} model.Success
+// @Failure 404,500 {object} model.Error
+// @Router /v1/missions/{id}/report [get]
 func (a *API) GetMissionReport(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	missionId := vars["id"]
@@ -50,7 +70,15 @@ func (a *API) GetMissionReport(w http.ResponseWriter, r *http.Request) {
 	w.Write(payload)
 }
 
-// GetMissions returns a list of the IDs of all active (non archived) missions
+// GetMissions godoc
+// @Summary Gets all existing missions.
+// @Description Returns all existing missions for a given Houston Key.
+// @ID get-missions
+// @Tags Mission
+// @Param Header header string true "Houston Key"
+// @Success 200 {object} model.Success
+// @Failure 404,500 {object} model.Error
+// @Router /v1/missions/ [get]
 func (a *API) GetMissions(w http.ResponseWriter, r *http.Request) {
 	key := r.Header.Get("x-access-key") // key has been checked by checkKey middleware
 	missions, err := a.AllActiveMissions(key)
@@ -68,7 +96,7 @@ func (a *API) GetMissions(w http.ResponseWriter, r *http.Request) {
 // @Description Creates a new mission using the ID provided or with an automatically generated ID if none is provided.
 // @ID create-mission
 // @Tags Mission
-// @Param Header x-access-key string true "Houston key"
+// @Param Header header string true "Houston Key"
 // @Param Body body model.MissionCreateRequest true "The plan, ID, and parameters to give to the new mission."
 // @Success 200 {object} model.MissionCreatedResponse
 // @Failure 404,500 {object} model.Error
@@ -97,6 +125,16 @@ func (a *API) PostMission(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// DeleteMission godoc
+// @Summary Deletes mission given its ID.
+// @Description Deletes any existing mission given a mission ID.
+// @ID delete-mission
+// @Tags Mission
+// @Param Header header string true "Houston Key"
+// @Param id path string true "The id of the mission"
+// @Success 200 {object} model.Success
+// @Failure 404,500 {object} model.Error
+// @Router /v1/missions/{id} [delete]
 func (a *API) DeleteMission(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
@@ -135,9 +173,18 @@ func (a *API) DeleteMission(w http.ResponseWriter, r *http.Request) {
 	w.Write(payload)
 }
 
-// PostMissionStage updates the state of a stage in an in-progress mission.
-// This route is transactional, meaning it will fail and result in 429 response if the same mission is currently being
-// modified.
+// PostMissionStage godoc
+// @Summary Updates the state of a stage in an in-progress mission.
+// @Description This route is transactional, meaning it will fail and result in 429 response if the same mission is currently being modified.
+// @ID post-mission-stage
+// @Tags Mission
+// @Param Header header string true "Houston Key"
+// @Param Body body model.MissionStageStateUpdate true "The state of the stage and whether dependencies have been ignored."
+// @Param id path string true "The id of the mission"
+// @Param name path string true "The name of the plan"
+// @Success 200 {object} model.Success
+// @Failure 404,500 {object} model.Error
+// @Router /v1/missions/{id}/stages/{name} [post]
 func (a *API) PostMissionStage(w http.ResponseWriter, r *http.Request) {
 
 	reqBody, _ := io.ReadAll(r.Body)

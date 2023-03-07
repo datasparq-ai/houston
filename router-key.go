@@ -7,7 +7,15 @@ import (
 	"net/http"
 )
 
-// GetKey returns key information (name and usage)
+// GetKey godoc
+// @Summary Get key information.
+// @Description Returns key information (name and usage).
+// @ID get-key
+// @Tags Key
+// @Param Header header string true "Houston Key"
+// @Success 200 {object} model.Success
+// @Failure 404,500 {object} model.Error
+// @Router /v1/key [get]
 func (a *API) GetKey(w http.ResponseWriter, r *http.Request) {
 	key := r.Header.Get("x-access-key") // key has been checked by checkKey middleware
 
@@ -28,6 +36,15 @@ func (a *API) GetKey(w http.ResponseWriter, r *http.Request) {
 
 // PostKey is used to create a new key. The request does not need to contain a body if a random key should be generated.
 // the newly created key is returned as bytes.
+// PostKey godoc
+// @Summary Create a new key.
+// @Description The request does not need to contain a body if a random key should be generated. The newly created key is returned as bytes.
+// @ID post-key
+// @Tags Key
+// @Param Body body model.Key true "The id, name and usage of key"
+// @Success 200 {object} model.Success
+// @Failure 404,500 {object} model.Error
+// @Router /v1/key [post]
 func (a *API) PostKey(w http.ResponseWriter, r *http.Request) {
 	var key model.Key
 
