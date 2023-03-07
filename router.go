@@ -28,6 +28,18 @@ func (a *API) GetCompletedMissions(w http.ResponseWriter, r *http.Request) {
   w.Write(payload)
 }
 
+// @title Houston API
+// @version 1.0
+// @description Houston API documentation. You can visit the GitHub repository at https://github.com/datasparq-ai/houston
+
+// @contact.name Matt Simmons
+// @contact.email info@datasparq.ai
+
+// @license.name Houston: Workflow Orchestration API
+// @license.url  https://github.com/datasparq-ai/houston/blob/main/LICENSE
+
+// @host localhost:8000
+// @BasePath /api/v1
 func (a *API) initRouter() {
 
   router := mux.NewRouter().StrictSlash(true)
