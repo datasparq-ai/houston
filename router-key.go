@@ -12,10 +12,10 @@ import (
 // @Description Returns key information (name and usage).
 // @ID get-key
 // @Tags Key
-// @Param Header header string true "Houston Key"
+// @Param x-access-key header string true "Houston Key"
 // @Success 200 {object} model.Success
 // @Failure 404,500 {object} model.Error
-// @Router /v1/key [get]
+// @Router /api/v1/key [get]
 func (a *API) GetKey(w http.ResponseWriter, r *http.Request) {
 	key := r.Header.Get("x-access-key") // key has been checked by checkKey middleware
 
@@ -44,7 +44,7 @@ func (a *API) GetKey(w http.ResponseWriter, r *http.Request) {
 // @Param Body body model.Key true "The id, name and usage of key"
 // @Success 200 {object} model.Success
 // @Failure 404,500 {object} model.Error
-// @Router /v1/key [post]
+// @Router /api/v1/key [post]
 func (a *API) PostKey(w http.ResponseWriter, r *http.Request) {
 	var key model.Key
 

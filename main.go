@@ -26,20 +26,6 @@ type API struct {
 	config *Config
 }
 
-// @title Houston API
-// @version 1.0
-// @description Houston API documentation. You can visit the GitHub repository at https://github.com/datasparq-ai/houston
-
-// @contact.name Datasparq
-// @contact.url
-// @contact.email
-
-// @license.name
-// @license.url
-
-// @host localhost:8080
-// @BasePath /api/v1
-
 // New creates the Houston API object.
 // It will create or connect to a database depending on the settings in the config file.
 // local db will only persist while program is running.
