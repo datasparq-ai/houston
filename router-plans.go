@@ -15,7 +15,16 @@ import (
 	"strings"
 )
 
-// GetPlan returns the plan definition as JSON. If the plan was never explicitly saved then it will return 404.
+// GetPlan godoc
+// @Summary Gets plan given its name.
+// @Description Returns the plan definition as JSON. If the plan was never explicitly saved then it will return 404.
+// @ID get-plan
+// @Tags Plan
+// @Param x-access-key header string true "Houston Key"
+// @Param name path string true "The name of the plan"
+// @Success 200 {object} model.Success
+// @Failure 404,500 {object} model.Error
+// @Router /api/v1/plans/{name} [get]
 func (a *API) GetPlan(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	planName := vars["name"]
@@ -31,7 +40,16 @@ func (a *API) GetPlan(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(plan))
 }
 
-// GetPlanAsMission is identical to GetPlan but returns the plan in the same format as a mission.
+// GetPlanAsMission godoc
+// @Summary Gets plan in format of a mission.
+// @Description This is identical to GetPlan but returns the plan in the same format as a mission
+// @ID get-plan-as-mission
+// @Tags Plan
+// @Param x-access-key header string true "Houston Key"
+// @Param name path string true "The name of the plan"
+// @Success 200 {object} model.Success
+// @Failure 404,500 {object} model.Error
+// @Router /api/v1/plans/{name}/m [get]
 func (a *API) GetPlanAsMission(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	planName := vars["name"]
@@ -57,6 +75,16 @@ func (a *API) GetPlanAsMission(w http.ResponseWriter, r *http.Request) {
 	w.Write(planBytes)
 }
 
+// PostPlan godoc
+// @Summary Updates the state of a stage in an in-progress mission.
+// @Description This route is transactional, meaning it will fail and result in 429 response if the same mission is currently being modified.
+// @ID post-plan
+// @Tags Plan
+// @Param x-access-key header string true "Houston Key"
+// @Param Body body model.Plan true "The id, services, stages and parameters of a plan."
+// @Success 200 {object} model.Success
+// @Failure 404,500 {object} model.Error
+// @Router /api/v1/plans [post]
 func (a *API) PostPlan(w http.ResponseWriter, r *http.Request) {
 	reqBody, _ := io.ReadAll(r.Body)
 	var plan model.Plan
@@ -74,8 +102,17 @@ func (a *API) PostPlan(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// DeletePlan deletes a plan and all its missions from the database. Any missions in progress will
-// be deleted.
+// DeletePlan godoc
+// @Summary Deletes a plan and all its missions from the database.
+// @Description Deletes a plan and associated missions given its name. Any missions in progress will be deleted.
+// @ID delete-plan
+// @Tags Plan
+// @Param x-access-key header string true "Houston Key"
+// @Param Body body model.Plan true "The id, services, stages and parameters of a plan."
+// @Param name path string true "The name of the plan"
+// @Success 200 {object} model.Success
+// @Failure 404,500 {object} model.Error
+// @Router /api/v1/plans/{name} [delete]
 func (a *API) DeletePlan(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	planName := vars["name"]
@@ -121,6 +158,15 @@ func (a *API) DeletePlan(w http.ResponseWriter, r *http.Request) {
 	w.Write(payload)
 }
 
+// GetPlans godoc
+// @Summary Gets all plans
+// @Description Returns a list of all existing plans given a Houston Key.
+// @ID get-plans
+// @Tags Plan
+// @Param x-access-key header string true "Houston Key"
+// @Success 200 {object} model.Success
+// @Failure 404,500 {object} model.Error
+// @Router /api/v1/plans/ [get]
 func (a *API) GetPlans(w http.ResponseWriter, r *http.Request) {
 	key := r.Header.Get("x-access-key") // key has been checked by checkKey middleware
 	plans, err := a.ListPlans(key)
@@ -133,7 +179,17 @@ func (a *API) GetPlans(w http.ResponseWriter, r *http.Request) {
 	w.Write(payload)
 }
 
-// GetPlanMissions returns a list of the IDs of all active (non archived) missions for the plan
+
+// GetPlanMissions godoc
+// @Summary Gets a plan's missions
+// @Description Returns a list of the IDs of all active (non archived) missions for the plan.
+// @ID get-plan-missions
+// @Tags Plan
+// @Param x-access-key header string true "Houston Key"
+// @Param name path string true "The name of the plan"
+// @Success 200 {object} model.Success
+// @Failure 404,500 {object} model.Error
+// @Router /api/v1/plans/{name}/missions [get]
 func (a *API) GetPlanMissions(w http.ResponseWriter, r *http.Request) {
 	key := r.Header.Get("x-access-key") // key has been checked by checkKey middleware
 	vars := mux.Vars(r)
