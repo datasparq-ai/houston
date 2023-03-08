@@ -404,3 +404,28 @@ func TestAPI_CompletedMissions(t *testing.T) {
 
 	api.DeleteKey(key)
 }
+
+func TestAPI_ListKeys(t *testing.T) {
+
+	c := client.New("test", "")
+
+	// Generate 2 random keys
+	c.CreateKey("test2", "", "")
+	c.CreateKey("test3", "", "")
+
+	// Extract list of keys
+	keys, err := c.ListKeys()
+
+	if err != nil {
+		t.Fatalf("Got an error when trying to list keys")
+	}
+
+    // Should have 3 keys in db including original test key
+    noKeys := len(keys)
+
+	if noKeys != 3 {
+		t.Fatalf(`All created keys have not been listed`)
+	}
+
+
+}

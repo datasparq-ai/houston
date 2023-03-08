@@ -224,3 +224,10 @@ func (client *Client) ListPlans() ([]string, error) {
 	err := parseResponse(resp, &plans)
 	return plans, err
 }
+
+func (client *Client) ListKeys() ([]string, error) {
+	var keys []string
+	resp := client.get("/key/all")
+	err := parseResponse(resp, &keys)
+	return keys, err
+}
