@@ -67,3 +67,24 @@ func (a *API) PostKey(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Write([]byte(keyId))
 }
+
+// ListKeys godoc
+// @Summary Returns a list of all Houston keys.
+// @Description
+// @ID get-list-keys
+// @Tags Key
+// @Success 200 {object} model.Success
+// @Failure 404,500 {object} model.Error
+// @Router /api/v1/key/all [get]
+
+func (a *API) ListKeys(w http.ResponseWriter, r *http.Request) {
+
+	keyList, err := a.db.ListKeys()
+	if err != nil {
+		handleError(err, w)
+		return
+	}
+	payload, _ := json.Marshal(keyList)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(payload)
+}
