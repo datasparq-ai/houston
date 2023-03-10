@@ -17,13 +17,13 @@ import (
 func TestMain(m *testing.M) {
 
 	api := New("")
-	api.DeleteKey("test")
+	api.deleteKey("test")
 	api.CreateKey("test", "unittest-1")
 	go api.Run()
 
 	code := m.Run() // run tests
 
-	api.DeleteKey("test") // clean up
+	api.deleteKey("test") // clean up
 	os.Exit(code)
 }
 
@@ -43,7 +43,7 @@ func TestAPI_CreateKey(t *testing.T) {
 		t.Fatalf(`Key is not random`)
 	}
 
-	err = api.DeleteKey(key) // clean up
+	err = api.deleteKey(key) // clean up
 	if err != nil {
 		t.Fatalf(`Could not delete key`)
 	}
@@ -402,7 +402,7 @@ func TestAPI_CompletedMissions(t *testing.T) {
 		t.Fatalf("Deleted mission is still listed as a completed mission.")
 	}
 
-	api.DeleteKey(key)
+	api.deleteKey(key)
 }
 
 func TestAPI_ListKeys(t *testing.T) {
@@ -429,3 +429,30 @@ func TestAPI_ListKeys(t *testing.T) {
 
 
 }
+
+func TestAPI_DeleteKey(t *testing.T) {
+	c := client.New("test", "")
+
+	c.DeleteKey()
+
+	// Extract list of keys
+	keys, _ := c.ListKeys()
+
+    // Ensure test key is not in list of keys
+	keyExists := false
+	for i := range keys {
+		if keys[i] == "test" {
+			keyExists = true
+		}
+	}
+	if keyExists {
+		t.Fatalf("Deleted key still exists when listing keys")
+	}
+}
+
+
+
+
+
+
+

@@ -65,7 +65,7 @@ func (a *API) initRouter() {
 	apiKeyRouter := router.PathPrefix("/api/v1/key").Subrouter()
 	apiKeyRouter.Use(a.checkAdminPassword)
 	apiKeyRouter.HandleFunc("/all", a.ListKeys).Methods("GET")
-	//apiKeyRouter.HandleFunc("/{id}", a.DeleteKey).Methods("DELETE")  // TODO
+	apiKeyRouter.HandleFunc("", a.DeleteKey).Methods("DELETE")  // TODO
 	apiKeyRouter.HandleFunc("", a.PostKey).Methods("POST")
 	//apiKeyRouter.HandleFunc("/password", a.PostPassword).Methods("GET")  // TODO: route to change password
 

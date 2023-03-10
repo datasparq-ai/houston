@@ -109,7 +109,7 @@ func (a *API) CreateKey(key string, name string) (string, error) {
 	return key, nil
 }
 
-func (a *API) DeleteKey(key string) error {
+func (a *API) deleteKey(key string) error {
 	err := a.db.DeleteKey(key)
 	return err
 }

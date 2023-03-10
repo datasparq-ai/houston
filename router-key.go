@@ -88,3 +88,24 @@ func (a *API) ListKeys(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(payload)
 }
+
+// DeleteKey godoc
+// @Summary Returns a list of all Houston keys.
+// @Description
+// @ID delete-key
+// @Tags Key
+// @Param x-access-key header string true "Houston Key"
+// @Success 200 {object} model.Success
+// @Failure 404,500 {object} model.Error
+// @Router /api/v1/key [delete]
+func (a *API) DeleteKey(w http.ResponseWriter, r *http.Request) {
+
+  key := r.Header.Get("x-access-key")
+
+  a.db.DeleteKey(key)
+
+  payload, _ := json.Marshal(model.Success{Message: "Deleted key" + key})
+
+  w.Header().Set("Content-Type", "application/json")
+  w.Write(payload)
+}
