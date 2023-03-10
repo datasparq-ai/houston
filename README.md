@@ -47,6 +47,8 @@ go install github.com/datasparq-ai/houston
 
 ### Contributing 
 
+Please see the [contributing](./docs/contributing.md) guide.
+
 Development of Houston is supported by [Datasparq](https://datasparq.ai).
 
 ### Run Unit Tests

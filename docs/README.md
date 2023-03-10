@@ -4,12 +4,12 @@
 Quick links:
 - Home: [callhouston.io](https://callhouston.io)
 - Documentation: [docs.callhouston.io](todo), [source](.)
-- Quickstart: [video](todo), [guide](todo), [repository](https://github.com/datasparq-intelligent-products/houston-quickstart-python)
+- Quickstart (15 minutes): [video](todo), [guide](https://github.com/datasparq-intelligent-products/houston-quickstart-python)
 - Houston API: [source](..)
-- API client:
+- Client:
   - Python: [PyPi](https://pypi.org/project/houston-client/), [source](https://github.com/datasparq-intelligent-products/houston-python)
-  - Go [WIP]: github.com/datasparq-ai/houston/client
-  - Other Languages (generated): [openapi.yaml](todo)
+  - Go [WIP]: [github.com/datasparq-ai/houston/client](https://github.com/datasparq-ai/houston/client)
+  - Other Languages (generated): [swagger.json](todo)
 - Docker image: [Docker Hub](https://hub.docker.com/r/datasparq/houston), [source](../docker/Dockerfile)
 - Terraform modules:
   - houston/google: [registry](https://registry.terraform.io/modules/datasparq-ai/houston/google/latest), [source](https://github.com/datasparq-ai/terraform-google-houston)
@@ -25,9 +25,9 @@ Quick links:
 
 [Concepts](./concepts.md)
 
-Services
-- [Services](services.md)
+[Services](services.md)
 - [Commands](commands.md)
+- [Service Trigger Methods](service_trigger_methods.md)
 - [Google Cloud Platform](gcp.md)
 
 API

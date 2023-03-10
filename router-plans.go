@@ -179,7 +179,6 @@ func (a *API) GetPlans(w http.ResponseWriter, r *http.Request) {
 	w.Write(payload)
 }
 
-
 // GetPlanMissions godoc
 // @Summary Gets a plan's missions
 // @Description Returns a list of the IDs of all active (non archived) missions for the plan.
