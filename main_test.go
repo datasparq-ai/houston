@@ -449,10 +449,3 @@ func TestAPI_DeleteKey(t *testing.T) {
 		t.Fatalf("Deleted key still exists when listing keys")
 	}
 }
-
-
-
-
-
-
-
