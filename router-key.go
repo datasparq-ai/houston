@@ -102,7 +102,12 @@ func (a *API) DeleteKey(w http.ResponseWriter, r *http.Request) {
 
   key := r.Header.Get("x-access-key")
 
-  a.db.DeleteKey(key)
+  err := a.db.DeleteKey(key)
+
+  if err != nil {
+    handleError(err, w)
+    return
+  }
 
   payload, _ := json.Marshal(model.Success{Message: "Deleted key" + key})
 
