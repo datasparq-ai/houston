@@ -420,13 +420,12 @@ func TestAPI_ListKeys(t *testing.T) {
 		t.Fatalf("Got an error when trying to list keys")
 	}
 
-    // Should have 3 keys in db including original test key
-    noKeys := len(keys)
+	// Should have 3 keys in db including original test key
+	noKeys := len(keys)
 
 	if noKeys != 3 {
 		t.Fatalf(`All created keys have not been listed`)
 	}
-
 
 }
 
@@ -438,7 +437,7 @@ func TestAPI_DeleteKey(t *testing.T) {
 	// Extract list of keys
 	keys, _ := c.ListKeys()
 
-    // Ensure test key is not in list of keys
+	// Ensure test key is not in list of keys
 	keyExists := false
 	for i := range keys {
 		if keys[i] == "test" {
