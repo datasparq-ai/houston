@@ -231,3 +231,16 @@ func (client *Client) ListKeys() ([]string, error) {
 	err := parseResponse(resp, &keys)
 	return keys, err
 }
+
+func (client *Client) DeleteKey() (error) {
+	resp := client.delete("/key")
+	responseBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return handleInvalidResponse(err)
+	}
+	if resp.StatusCode != 200 {
+		return handleErrorResponse(responseBody)
+	}
+	return nil
+}
+
