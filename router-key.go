@@ -90,8 +90,8 @@ func (a *API) ListKeys(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteKey godoc
-// @Summary Returns a list of all Houston keys.
-// @Description
+// @Summary Deletes key.
+// @Description Deletes key extracted from header
 // @ID delete-key
 // @Tags Key
 // @Param x-access-key header string true "Houston Key"
@@ -102,6 +102,7 @@ func (a *API) DeleteKey(w http.ResponseWriter, r *http.Request) {
 
   key := r.Header.Get("x-access-key")
 
+  // Delete key extracted from header
   err := a.db.DeleteKey(key)
 
   if err != nil {
