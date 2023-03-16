@@ -382,7 +382,7 @@ func (a *API) initDashboard() {
 	if a.config.Dashboard.Enabled {
 		// serve the houston console
 		a.router.HandleFunc("/console", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte(`<html><link rel="stylesheet" type="text/css" href="https://game-ii.s3.eu-west-2.amazonaws.com/console/main.css"><script src="https://game-ii.s3.eu-west-2.amazonaws.com/console/main.js"></script></html>`))
+			w.Write([]byte(`<html><link rel="stylesheet" type="text/css" href="https://storage.googleapis.com/houston-static/console/main.css"><script src="https://storage.googleapis.com/houston-static/console/main.js"></script></html>`))
 		})
 		if a.config.Dashboard.Src == "" {
 			// TODO: host on static.callhouston.io
@@ -391,8 +391,8 @@ func (a *API) initDashboard() {
  <meta name="viewport" content="width=device-width,initial-scale=1"/>
  <meta name="theme-color" content="#000000"/>
  <meta name="description" content="Houston Dashboard"/>
- <script defer="defer" src="https://game-ii.s3.eu-west-2.amazonaws.com/dashboard/main.js"></script>
- <link href="https://game-ii.s3.eu-west-2.amazonaws.com/dashboard/main.css" rel="stylesheet">
+ <script defer="defer" src="https://storage.googleapis.com/houston-static/dashboard/main.js"></script>
+ <link href="https://storage.googleapis.com/houston-static/dashboard/main.css" rel="stylesheet">
 </head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>
 `)
 
