@@ -4,7 +4,7 @@
 Running a workflow with Houston involves the following components: 
 
 - Houston API: Orchestrates the services and serves the dashboard UI
-- Services: Microservices that execute stages and communicate with the API using the Houston client
+- [Services](./services.md): Microservices that execute stages and communicate with the API using the Houston client
 - Pub/Sub Messaging System: The tool (of the user's choice) that triggers each microservice to carry out a stage
 
 A Houston workflow is made up of the following concepts:

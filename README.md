@@ -21,6 +21,9 @@ Alternatively, start a local Houston server with the default config:
 houston api
 ```
 
+The server is now running at `localhost:8000`. The Houston client will automatically look for Houston API servers 
+running at this location.
+
 (in a separate shell) Create a new Houston key with ID = 'quickstart':
 
 ```bash
@@ -29,7 +32,7 @@ export HOUSTON_KEY=$(houston create-key -i quickstart)
 
 Save this example plan to local file: [example_plan.yaml]()
 
-Start a mission using this plan: 
+Start a mission using this plan:
 
 ```bash
 houston start --plan ./example_plan.yaml

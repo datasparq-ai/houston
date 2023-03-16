@@ -18,7 +18,7 @@ Quick links:
 - Community: [Twitter](https://twitter.com/callhouston_io)
 - Contributing
   - [Contributing Guide](./contributing.md)
-  - [Kanban Board]()
+  - [Kanban Board]() [Coming Soon]
 
 
 ## Articles
@@ -28,7 +28,7 @@ Quick links:
 [Services](services.md)
 - [Commands](commands.md)
 - [Service Trigger Methods](service_trigger_methods.md)
-- [Google Cloud Platform](gcp.md)
+- [Google Cloud Platform](google_cloud.md)
 
 API
 - [Config](config.md)
