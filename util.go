@@ -58,7 +58,7 @@ func NewMissionFromPlan(plan *model.Plan) *mission.Mission {
 // handleError writes an error http response given an error object
 func handleError(err error, w http.ResponseWriter) {
 	res := model.Error{Message: err.Error(), Type: strings.Replace(fmt.Sprintf("%T", err), "*", "", 1)}
-	fmt.Println("ERROR:", res.Message)
+	log.Error(err)
 	payload, _ := json.Marshal(res)
 	switch err.(type) {
 	case *model.TransactionFailedError, *model.TooManyRequestsError:

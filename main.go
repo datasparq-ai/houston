@@ -9,7 +9,6 @@ import (
 	"github.com/datasparq-ai/houston/model"
 	"github.com/gorilla/mux"
 	"github.com/spf13/cobra"
-	"log"
 	"math/rand"
 	"net"
 	"net/http"
@@ -106,6 +105,8 @@ func (a *API) CreateKey(key string, name string) (string, error) {
 		return "", err1
 	}
 
+	log.Infof("Created key with ID '%s' and name '%s'", key, name)
+
 	return key, nil
 }
 
@@ -115,9 +116,7 @@ func (a *API) deleteKey(key string) error {
 }
 
 // CreateMissionFromPlan creates new mission from an existing saved plan (given the name)
-//
-//	or an unsaved plan (given entire plan as json). Does the following:
-//
+// or an unsaved plan (given entire plan as json). Does the following:
 // - parse plan or get from db if name provided
 // - validate DAG
 // - assign mission ID if one is not provided
@@ -421,6 +420,7 @@ func (a *API) Run() {
 
 func main() {
 	rand.Seed(time.Now().UnixNano()) // change random seed
+	initLog()
 
 	if err := func() (rootCmd *cobra.Command) {
 
@@ -545,6 +545,6 @@ func main() {
 
 		return
 	}().Execute(); err != nil {
-		log.Panicln(err)
+		log.Fatal(err)
 	}
 }

@@ -58,6 +58,7 @@ func (a *API) initRouter() {
 	apiRouter.HandleFunc("/missions/{id}/report", a.GetMissionReport).Methods("GET")
 	apiRouter.HandleFunc("/missions/{id}", a.DeleteMission).Methods("DELETE")
 	apiRouter.HandleFunc("/completed", a.GetCompletedMissions).Methods("GET")
+	//apiRouter.HandleFunc("/logs", a.GetLogs).Methods("GET")
 
 	// note: a user can get the name of a key without the admin password, provided they have the key
 	apiRouter.HandleFunc("/key", a.GetKey).Methods("GET")
@@ -65,7 +66,7 @@ func (a *API) initRouter() {
 	apiKeyRouter := router.PathPrefix("/api/v1/key").Subrouter()
 	apiKeyRouter.Use(a.checkAdminPassword)
 	apiKeyRouter.HandleFunc("/all", a.ListKeys).Methods("GET")
-	apiKeyRouter.HandleFunc("", a.DeleteKey).Methods("DELETE")  // TODO
+	apiKeyRouter.HandleFunc("", a.DeleteKey).Methods("DELETE") // TODO
 	apiKeyRouter.HandleFunc("", a.PostKey).Methods("POST")
 	//apiKeyRouter.HandleFunc("/password", a.PostPassword).Methods("GET")  // TODO: route to change password
 
