@@ -27,7 +27,8 @@ func demo(createCmd *cobra.Command) {
 	time.Sleep(500 * time.Millisecond)
 
 	fmt.Printf("\u001B[37mcreating an API key%[2]v\n", s, e)
-	fmt.Printf(">>> %[1]vexport%[2]v \u001B[1mHOUSTON_KEY=$(%[2]v%[1]vhouston create-key%[2]v \u001B[1m-i demo -n Demo)%[2]v\n", s, e)
+	fmt.Printf(">>> %[1]vhouston create-key%[2]v \u001B[1m-i demo -n Demo%[2]v\n", s, e)
+	fmt.Printf(">>> %[1]vexport%[2]v \u001B[1mHOUSTON_KEY=demo%[2]v\n", s, e)
 
 	api.CreateKey("demo", "Demo")
 	fmt.Println("Created key 'demo'")
@@ -96,6 +97,7 @@ func demo(createCmd *cobra.Command) {
 	time.Sleep(3440 * time.Millisecond)
 	api.UpdateStageState("demo", "apollo-11", "tower-clearance-yaw-maneuver", "finished", false)
 
+	fmt.Printf(">>> %[1]vhouston start%[2]v \u001B[1m-p apollo -i apollo-12%[2]v\n", s, e)
 	_, err = api.CreateMissionFromPlan("demo", "apollo", "apollo-12")
 	if err != nil {
 		panic(err)

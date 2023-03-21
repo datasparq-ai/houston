@@ -7,9 +7,27 @@ with a single command (e.g. starting a mission), avoiding the need for any addit
 A Houston integrated service will run a command when triggered with a message containing the
 'command' attribute. The service will automatically find the API key and initialise a Houston client.
 
+The below table shows all commands and which clients currently support them. Refer to the section on each command
+for details on the required arguments.
+
+| Command Name | Python Client | Go Client |
+|--------------|---------------|-----------|
+| save         | yes           | yes*      |
+| delete       | yes           | no        |
+| start        | yes           | yes       |
+| trigger      | yes           | no        |
+| heal         | no            | no        |
+| exclude      | yes           | no        |
+| skip         | yes           | no        |
+| fail         | yes           | no        |
+| static-fire  | yes           | no        |
+| wait         | yes           | no        |
+
+*The Go client cannot save plans stored in Google Cloud Storage, but the Python client can when the 'gcp' plugin is installed (`pip install "houston-client[gcp]"`).
+
 The API key must be made available as the `HOUSTON_KEY` environment variable, 
 or through one of the methods defined for the cloud provider/plugin being used, see:
-- [Providing the API Key: Google Cloud Platform](./google_cloud.md#providing-the-api-key)  
+- [Providing the API Key: Google Cloud Platform](./google_cloud.md#providing-the-api-key)
 
 ### Save
 
@@ -55,12 +73,20 @@ Note that the service will need `houston-client[gcp]` installed to be able to re
 
 ### Delete
 
-Delete a plan.
+Delete a plan or mission. If a mission ID is provided then only the mission will be deleted. 
+When a plan is deleted, every mission that belonged to that plan is also deleted, even if the 
+mission is currently in progress. 
 
 Example CLI command:
 
 ```bash
-houston delete --plan=gs://my-bucket/apollo.yaml
+houston delete --plan "my-plan"
+```
+
+or
+
+```bash
+houston delete --plan "my-plan" --mission_id "m1"
 ```
 
 Example Python script:
@@ -169,7 +195,7 @@ the mission. note: Houston cannot stop a stage that has already been started).
 Example message - ignoring all stages:
 ```json
 {
-  "command": "ignore",
+  "command": "exclude",
   "plan": "apollo",
   "mission_id": "abc123"
 }
@@ -248,3 +274,14 @@ Example message to a Houston service:
   "stage": "main-engine-start"
 }
 ```
+
+### Wait
+
+The wait commands allows stages that take a long time to be executed by services that have short execution time limits. 
+For example, Google Cloud Functions have a maximum run time of 9 minutes, but a Google Cloud DataFlow job could easily 
+take over an hour to complete. To get around this, a service can start a job and then periodically check the status of 
+the job. This periodic checking can continue in a new function invocation after the original one has timed out. The 
+Houston stage remains 'started' (not finished or failed) until the check returns 'true'.  
+
+The service will use the `wait_callback` function provided to check if the stage has finished. If the `wait_callback` 
+returns `True`, the stage will end. 

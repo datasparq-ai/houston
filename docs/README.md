@@ -23,6 +23,7 @@ Quick links:
 
 ## Articles
 
+[Overview](todo)
 [Concepts](./concepts.md)
 
 [Services](services.md)
@@ -33,5 +34,6 @@ Quick links:
 API
 - [Config](config.md)
 - [Database Schema](database_schema.md)
+- [Demo Mode](demo_mode.md)
 - [Docker](docker.md)
 - [Websocket](websocket.md)

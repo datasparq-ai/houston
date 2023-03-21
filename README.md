@@ -3,9 +3,18 @@
 
 Houston is an open source, API based workflow orchestration tool.
 
-See our documentation on [callhouston.io](https://callhouston.io/docs).
+Documentation [./docs](./docs/README.md)
+Homepage: [callhouston.io](https://callhouston.io)
 
 This repo contains the API server, go client, and CLI.
+
+### Install
+
+If you have [go](https://golang.org/doc/install) installed you can build the binary yourself and install with:
+
+```bash
+go install github.com/datasparq-ai/houston
+```
 
 ### Example Usage / Quickstart (1 minute)
 
@@ -27,26 +36,39 @@ running at this location.
 (in a separate shell) Create a new Houston key with ID = 'quickstart':
 
 ```bash
-export HOUSTON_KEY=$(houston create-key -i quickstart)
+houston create-key -i quickstart -n "Houston Quickstart"
 ```
 
-Save this example plan to local file: [example_plan.yaml]()
+Save this example plan to local file, e.g. 'example_plan.yaml':
+
+```yaml
+name: apollo
+stages:
+  - name: engine-ignition
+  - name: engine-thrust-ok
+    upstream:
+      - engine-ignition
+  - name: release-holddown-arms
+  - name: umbilical-disconnected
+  - name: liftoff
+    upstream:
+      - engine-thrust-ok
+      - release-holddown-arms
+      - umbilical-disconnected
+```
 
 Start a mission using this plan:
 
 ```bash
-houston start --plan ./example_plan.yaml
+export HOUSTON_KEY=quickstart
+houston start --plan example_plan.yaml
 ```
 
 Then go to http://localhost:8000. Enter your Houston key 'quickstart'.
 
-### Install
-
-If you have [go](https://golang.org/doc/install) installed you can build the binary yourself and install with:
-
-```bash
-go install github.com/datasparq-ai/houston
-```
+You've created a plan and started a mission. You now need a microservice to complete each of the stages in this mission.
+See the quickstart for a guide on how to create microservices and complete Houston missions using them:
+[quickstart](https://github.com/datasparq-intelligent-products/houston-quickstart-python)
 
 ### Contributing 
 
