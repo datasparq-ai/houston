@@ -1,8 +1,11 @@
 package main
 
 import (
+    "encoding/json"
 	"github.com/sirupsen/logrus"
+	"github.com/gorilla/mux"
 	"os"
+	"net/http"
 	"time"
 )
 
@@ -31,6 +34,7 @@ func initLog() {
 // SetLoggingFile switches the logging output file to a file specific to the key and the current day. If no key is
 // provided then logs go to the main logging file, which is only accessible by the admin.
 func SetLoggingFile(key string) {
+
 	dt := time.Now()
 	day := dt.Format("01022006")
 
@@ -53,16 +57,39 @@ func SetLoggingFile(key string) {
 
 // GetLogs godoc
 // @Summary Returns logs for the key provided.
-// @Description Returns logs for the key provided. Defaults to today and yesterday.
+// @Description Returns logs for the key provided. Defaults to today.
 // @ID get-logs
 // @Tags Logs
 // @Param x-access-key header string true "Houston Key"
+// @Param logDate path string true "Date of logs required in format MMDDYYYY"
 // @Success 200 {object} ???
 // @Failure 404,500 {object} model.Error
 // @Router /api/v1/logs [get]
-//func (a *API) GetLogs(w http.ResponseWriter, r *http.Request) {
-//  key := r.Header.Get("x-access-key") // key has been checked by checkKey middleware
-//
-//  w.Header().Set("Content-Type", "application/json")
-//  w.Write(payload)
-//}
+func (a *API) GetLogs(w http.ResponseWriter, r *http.Request) {
+    key := r.Header.Get("x-access-key") // key has been checked by checkKey middleware
+    vars := mux.Vars(r)
+    logDate := vars["logDate"]
+    var requiredLogDate string
+
+    if logDate == "" {
+        dtToday := time.Now()
+        today := dtToday.Format("01022006")
+        requiredLogDate = today
+    } else {
+        requiredLogDate = logDate
+    }
+
+    var logFileName string
+    logFileName = "logs/key_" + key + "_" + requiredLogDate + "_log.txt"
+    contents, err := os.ReadFile(logFileName)
+    if err != nil {
+		handleError(err, w)
+	}
+	var logs string
+	logs = string(contents)
+
+
+    payload, _ := json.Marshal(logs)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(payload)
+}

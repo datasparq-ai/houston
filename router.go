@@ -58,7 +58,8 @@ func (a *API) initRouter() {
 	apiRouter.HandleFunc("/missions/{id}/report", a.GetMissionReport).Methods("GET")
 	apiRouter.HandleFunc("/missions/{id}", a.DeleteMission).Methods("DELETE")
 	apiRouter.HandleFunc("/completed", a.GetCompletedMissions).Methods("GET")
-	//apiRouter.HandleFunc("/logs", a.GetLogs).Methods("GET")
+	apiRouter.HandleFunc("/logs", a.GetLogs).Methods("GET")
+// 	apiRouter.HandleFunc("/logs*?logdate={logDate}", a.GetLogs).Methods("GET")
 
 	// note: a user can get the name of a key without the admin password, provided they have the key
 	apiRouter.HandleFunc("/key", a.GetKey).Methods("GET")

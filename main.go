@@ -112,6 +112,7 @@ func (a *API) CreateKey(key string, name string) (string, error) {
 
 func (a *API) deleteKey(key string) error {
 	err := a.db.DeleteKey(key)
+	log.Infof("Deleted key with name '%s'", key)
 	return err
 }
 
@@ -132,7 +133,9 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 		if p, ok := a.db.Get(key, "p|"+planNameOrPlan); ok {
 			planBytes = []byte(p)
 		} else {
+		    log.Debugf("")
 			return "", fmt.Errorf("no plan found named '%v'", planNameOrPlan)
+
 		}
 
 	} else {
@@ -154,9 +157,11 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 
 	// convert plan to mission
 	m := NewMissionFromPlan(&plan)
+    log.Infof("Converted Plan to Mission")
 
 	// validate graph
 	validationError := m.Validate()
+	log.Infof("Validated Mission Graph")
 	if validationError != nil {
 		return "", validationError
 	}
@@ -188,16 +193,19 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 		}
 	} else {
 		if strings.ContainsAny(missionId, string(disallowedCharacters)) {
+		    log.Debug("Ensure mission does not have an id that contains invalid characters.")
 			return "", fmt.Errorf("mission with id '%v' is not allowed because it contains invalid characters", missionId)
 		}
 		// check for disallowed ids (reserved keys)
 		for _, k := range reservedKeys {
 			if missionId == k {
+			    log.Debug("Ensure mission does not have an id that is reserved.")
 				return "", fmt.Errorf("mission with id '%v' is not allowed", missionId)
 			}
 		}
 		// check if mission id already exists
 		if _, exists := a.db.Get(key, missionId); exists {
+		    log.Debug("Ensure mission does not have the same id as an existing mission.")
 			return "", fmt.Errorf("mission with id '%v' already exists", missionId)
 		}
 	}
@@ -247,6 +255,9 @@ func (a *API) AllActiveMissions(key string) ([]string, error) {
 		}
 		missions = append(missions, s)
 	}
+	log.Infof("All active missions found in the API database attributed to key '%s'", key)
+	log.Debug("Inactive and archived missions are not stored in the API database")
+
 	return missions, err
 }
 
@@ -321,6 +332,8 @@ func (a *API) CompletedMissions(key string) []string {
 		return []string{}
 	}
 	completedList := strings.Split(completedListString, ",")
+	log.Infof("Got list of completed missions attributed to key '%s'", key)
+
 	return completedList
 }
 
@@ -335,7 +348,7 @@ func (a *API) SavePlan(key string, plan model.Plan) error {
 	}
 
 	planBytes, _ := json.Marshal(plan)
-
+	log.Infof("Converted Plan '%s' to Mission", plan.Name)
 	p, _ := a.db.Get(key, "p|"+plan.Name)
 	err = a.db.Set(key, "p|"+plan.Name, string(planBytes))
 	// if plan already exists, do not re-create the 'active' key
@@ -345,6 +358,7 @@ func (a *API) SavePlan(key string, plan model.Plan) error {
 	if err != nil {
 		return err
 	}
+	log.Infof("Plan '%s' has been saved.", plan.Name)
 	a.ws <- message{key, "planCreation", planBytes}
 	return nil
 }
@@ -353,6 +367,7 @@ func (a *API) SavePlan(key string, plan model.Plan) error {
 // The complete list of plans is the union of all saved plans and all active plans
 func (a *API) ListPlans(key string) ([]string, error) {
 
+    log.Infof("Listing plans attributed with key '%s'", key)
 	plans, err := a.db.List(key, "p")
 	for i, s := range plans {
 		plans[i] = strings.Replace(s, "p|", "", 1)
