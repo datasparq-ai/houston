@@ -11,6 +11,7 @@ import (
 	"github.com/datasparq-ai/houston/client"
 	"github.com/datasparq-ai/houston/model"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -308,7 +309,7 @@ func TestAPI_ConcurrentMissionUpdates(t *testing.T) {
 	c := client.New("test", "")
 	res, err := c.CreateMission("tests/test_plan_big.json", "ConcurrentMissionUpdates")
 	if err != nil {
-		panic(err)
+		t.Fatalf("Got an error when creating mission: %s", err.Error())
 	}
 	errorChannel := make(chan error)
 	c.StartStage(res.Id, "s0", false)
@@ -409,7 +410,7 @@ func TestAPI_ListKeys(t *testing.T) {
 
 	c := client.New("test", "")
 
-	// Generate 2 random keys
+	// Generate 2 more keys
 	c.CreateKey("test2", "", "")
 	c.CreateKey("test3", "", "")
 
@@ -420,11 +421,26 @@ func TestAPI_ListKeys(t *testing.T) {
 		t.Fatalf("Got an error when trying to list keys")
 	}
 
-	// Should have 3 keys in db including original test key
-	noKeys := len(keys)
+	// note: this gives a different result when running with local db vs Redis db, because there is only one instance
+	// of redis, whereas different tests use completely new instances of the local db
 
-	if noKeys != 3 {
-		t.Fatalf(`All created keys have not been listed`)
+	// Should have the 3 keys in db including original test key
+	//noKeys := len(keys)
+	foundKeys := []int{0, 0, 0}
+	for _, key := range keys {
+		if key == "test" {
+			foundKeys[0]++
+		} else if key == "test2" {
+			foundKeys[1]++
+		} else if key == "test3" {
+			foundKeys[2]++
+		}
+	}
+
+	for _, keyCount := range foundKeys {
+		if keyCount != 1 {
+			t.Fatalf("A key was not listed exactly one time, got " + strings.Join(keys, ", "))
+		}
 	}
 
 }

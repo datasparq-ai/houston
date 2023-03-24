@@ -133,7 +133,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 		if p, ok := a.db.Get(key, "p|"+planNameOrPlan); ok {
 			planBytes = []byte(p)
 		} else {
-			return "", fmt.Errorf("no plan found named '%v'", planNameOrPlan)
+			return "", &model.PlanNotFoundError{PlanName: planNameOrPlan}
 		}
 
 	} else {
@@ -494,7 +494,7 @@ func main() {
 				Run: func(c *cobra.Command, args []string) {
 					err := client.Save(plan)
 					if err != nil {
-						panic(err)
+						client.HandleCommandLineError(err)
 					}
 				},
 			}
@@ -518,7 +518,7 @@ func main() {
 						strings.Split(strings.Replace(exclude, " ", "", -1), ","),
 						strings.Split(strings.Replace(skip, " ", "", -1), ","))
 					if err != nil {
-						panic(err)
+						client.HandleCommandLineError(err)
 					}
 				},
 			}
@@ -545,6 +545,6 @@ func main() {
 
 		return
 	}().Execute(); err != nil {
-		log.Panicln(err)
+		panic(err)
 	}
 }

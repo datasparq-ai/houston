@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/datasparq-ai/houston/model"
 	"gopkg.in/yaml.v3"
-	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -39,12 +38,14 @@ func New(key string, baseUrl string) Client {
 		httpClient := &http.Client{}
 		_, err := httpClient.Do(req)
 		if err != nil {
-			fmt.Println("Defaulting to callhouston.io")
+			fmt.Println("A base URL (e.g. 'http://localhost:8000/api/v1') was not provided, and no Houston API was not found locally. Provide the base URL with the 'HOUSTON_BASE_URL' environment variable.")
 			baseUrl = "https://callhouston.io/api/v1"
 		}
+	} else if !(strings.HasPrefix(baseUrl, "http://") || strings.HasPrefix(baseUrl, "https://")) {
+		fmt.Printf("Base URL '%s' isn't a valid URL; must start with either 'http://' or 'https://'\n", baseUrl)
+		os.Exit(1)
 	} else {
 		baseUrl = strings.TrimSuffix(baseUrl, "/")
-		// todo: verify BaseURL: must start with http
 	}
 
 	// automatically use admin credentials stored in environment
@@ -54,33 +55,25 @@ func New(key string, baseUrl string) Client {
 		auth = Auth{"admin", envPass}
 	}
 
-	return Client{baseUrl, key, auth}
+	client := Client{baseUrl, key, auth}
+
+	// Check the health of the selected API server. This will only produce a warning if it fails.
+	healthCheckError := healthCheck(baseUrl)
+	if healthCheckError != nil {
+		fmt.Printf("Warning: Server health check failed. Check that the URL '%v' is correct and the server is running. Error: %v\n", baseUrl, healthCheckError.Error())
+		if !strings.HasSuffix(baseUrl, "/api/v1") {
+			fmt.Println("Warning: Base URL doesn't end with '/api/v1', which is the standard base path.")
+		}
+	}
+
+	return client
 }
 
 func (client *Client) GetMission(missionId string) (model.Mission, error) {
+	var mission model.Mission
 	resp := client.get("/missions/" + missionId)
-
-	responseBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return model.Mission{}, err // TODO: format error into helpful message
-	}
-	if resp.StatusCode > 200 {
-		var errorResponse model.Error
-		err = json.Unmarshal(responseBody, &errorResponse)
-		if err != nil {
-			return model.Mission{}, handleInvalidResponse(err)
-		}
-		err := fmt.Errorf(errorResponse.Message)
-		return model.Mission{}, err
-	}
-
-	var missionResponse model.Mission
-	err = json.Unmarshal(responseBody, &missionResponse)
-	if err != nil {
-		return model.Mission{}, handleInvalidResponse(err)
-
-	}
-	return missionResponse, nil
+	err := parseResponse(resp, &mission)
+	return mission, err
 }
 
 func loadPlan(plan string) (string, error) {
@@ -124,26 +117,10 @@ func (client *Client) CreateMission(plan string, id string) (model.MissionCreate
 }
 
 func (client *Client) ListActiveMissions() ([]string, error) {
-	resp := client.get("/missions")
-	responseBody, err := io.ReadAll(resp.Body)
 	var missions []string
-	if err != nil {
-		return missions, handleInvalidResponse(err)
-	}
-	if resp.StatusCode != 200 {
-		var errorResponse model.Error
-		err = json.Unmarshal(responseBody, &errorResponse)
-		if err != nil {
-			return missions, handleInvalidResponse(err)
-		}
-		err := fmt.Errorf(errorResponse.Message)
-		return missions, err
-	}
-	err = json.Unmarshal(responseBody, &missions)
-	if err != nil {
-		return missions, handleInvalidResponse(err)
-	}
-	return missions, nil
+	resp := client.get("/missions")
+	err := parseResponse(resp, &missions)
+	return missions, err
 }
 
 func (client *Client) DeleteMission(missionId string) (model.Mission, error) {
@@ -207,15 +184,10 @@ func (client *Client) GetPlan(name string) (model.Plan, error) {
 }
 
 func (client *Client) DeletePlan(name string) error {
+	var success model.Success
 	resp := client.delete("/plans/" + name)
-	responseBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return handleInvalidResponse(err)
-	}
-	if resp.StatusCode != 200 {
-		return handleErrorResponse(responseBody)
-	}
-	return nil
+	err := parseResponse(resp, &success)
+	return err
 }
 
 func (client *Client) ListPlans() ([]string, error) {
@@ -232,15 +204,9 @@ func (client *Client) ListKeys() ([]string, error) {
 	return keys, err
 }
 
-func (client *Client) DeleteKey() (error) {
+func (client *Client) DeleteKey() error {
+	var success model.Success
 	resp := client.delete("/key")
-	responseBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return handleInvalidResponse(err)
-	}
-	if resp.StatusCode != 200 {
-		return handleErrorResponse(responseBody)
-	}
-	return nil
+	err := parseResponse(resp, &success)
+	return err
 }
-

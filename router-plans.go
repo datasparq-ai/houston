@@ -100,6 +100,10 @@ func (a *API) PostPlan(w http.ResponseWriter, r *http.Request) {
 		handleError(err, w)
 		return
 	}
+
+	payload, _ := json.Marshal(model.Success{Message: "Created " + plan.Name})
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(payload)
 }
 
 // DeletePlan godoc
