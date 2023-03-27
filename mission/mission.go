@@ -13,8 +13,6 @@ type Response struct {
 	IsComplete bool     `json:"complete"`
 }
 
-type PlanValidationError error
-
 type Mission struct {
 	Id         string                 `json:"i" name:"id"`
 	Name       string                 `json:"n" name:"name"`     // the plan name, note: not needed in a mission
@@ -55,7 +53,7 @@ func (m *Mission) Bytes() []byte {
 	output, err := json.Marshal(m)
 
 	if err != nil {
-		panic(err)
+		return []byte{}
 	}
 
 	return output
@@ -67,19 +65,18 @@ func (m *Mission) Bytes() []byte {
 // - all referenced stages exist
 // - graph is not cyclic
 // - graph is contiguous (no orphaned stages)
-func (m *Mission) Validate() PlanValidationError {
+func (m *Mission) Validate() error {
 
 	// are there more than 0 stages?
 	if len(m.Stages) == 0 {
-		err := fmt.Errorf("invalid plan: must have more than 0 stages")
-		return err
+		return &PlanValidationError{"plans must have more than 0 stages"}
 	}
 
 	// are there any duplicate stage names?
 	var stageNames []string
 	for _, s := range m.Stages {
 		if contains(stageNames, s.Name) {
-			err := fmt.Errorf("invalid plan: stage name '%v' is not unique", s.Name)
+			err := &PlanValidationError{fmt.Sprintf("stage name '%v' is not unique", s.Name)}
 			return err
 		} else {
 			stageNames = append(stageNames, s.Name)
@@ -90,14 +87,12 @@ func (m *Mission) Validate() PlanValidationError {
 	for _, s := range m.Stages {
 		for _, u := range s.Upstream {
 			if !contains(stageNames, u) {
-				err := fmt.Errorf("invalid plan: stage '%v' has upstream dependency '%v' which is not defined", s.Name, u)
-				return err
+				return &PlanValidationError{fmt.Sprintf("stage '%v' has upstream dependency '%v' which is not defined", s.Name, u)}
 			}
 		}
 		for _, d := range s.Downstream {
 			if !contains(stageNames, d) {
-				err := fmt.Errorf("invalid plan: stage '%v' has downstream dependency '%v' which is not defined", s.Name, d)
-				return err
+				return &PlanValidationError{fmt.Sprintf("stage '%v' has downstream dependency '%v' which is not defined", s.Name, d)}
 			}
 		}
 	}
@@ -113,8 +108,7 @@ func (m *Mission) Validate() PlanValidationError {
 	for _, s := range m.Stages {
 		if !visited[s] {
 			if m.graph.CheckForCycle(s, visited, recursion) {
-				err := fmt.Errorf("invalid plan: stage '%v' is dependent on itself (infinite loop)", s.Name)
-				return err
+				return &PlanValidationError{fmt.Sprintf("stage '%v' is dependent on itself (infinite loop)", s.Name)}
 			}
 		}
 	}
@@ -122,8 +116,7 @@ func (m *Mission) Validate() PlanValidationError {
 	// is graph contiguous?
 	// follow every path forwards and backwards from a single node and check that every node was visited at least once
 	if unreachableStage := m.graph.CheckForIncontiguity(m.Stages); unreachableStage != nil {
-		err := fmt.Errorf("invalid plan: not contiguous - '%v' cannot be reached from '%v'", unreachableStage.Name, m.Stages[0].Name)
-		return err
+		return &PlanValidationError{fmt.Sprintf("invalid plan: not contiguous - '%v' cannot be reached from '%v'", unreachableStage.Name, m.Stages[0].Name)}
 	}
 
 	return nil
@@ -163,7 +156,7 @@ func getStage(stageName string, stages []*Stage) (*Stage, error) {
 			return stage, nil
 		}
 	}
-	err := fmt.Errorf("no stage found with name '%v'", stageName)
+	err := &StageNotFoundError{stageName}
 	return nil, err
 }
 
@@ -213,12 +206,11 @@ func (m *Mission) Next() []string {
 
 // StartStage changes a stage's state to started using the following logic:
 // - does stage exist?
-// - is stage ready or failed (all other states are not allowed)?
+// - is stage ready or failed? (all other states are not allowed)
 // - are all upstream dependencies finished or skipped?
 func (m *Mission) StartStage(stageName string, ignoreDependencies bool) (Response, error) {
 	if m.isComplete {
-		return Response{false, nil, true},
-			fmt.Errorf("mission has been completed, cannot operate further")
+		return Response{false, nil, true}, &CompletedError{}
 	}
 	s, err := m.GetStage(stageName)
 	if err != nil {
@@ -231,19 +223,17 @@ func (m *Mission) StartStage(stageName string, ignoreDependencies bool) (Respons
 	case ready, failed:
 		// ok, failed stages can be started again (retry)
 	case started:
-		err := fmt.Errorf("cannot start stage '%v' because it has already started - stages can only be started again after they have been marked as failed", stageName)
+		err := &StageChangeError{fmt.Sprintf("cannot start stage '%v' because it has already started - stages can only be started again after they have been marked as failed", stageName)}
 		return Response{false, nil, m.isComplete}, err
 	case finished:
-		err := fmt.Errorf("cannot start stage '%v' because it has already finished", stageName)
+		err := &StageChangeError{fmt.Sprintf("cannot start stage '%v' because it has already finished", stageName)}
 		return Response{false, nil, m.isComplete}, err
 	case excluded:
-		err := fmt.Errorf("cannot start stage '%v' because it is being excluded", stageName)
+		err := &StageChangeError{fmt.Sprintf("cannot start stage '%v' because it is being excluded", stageName)}
 		return Response{false, nil, m.isComplete}, err
 	case skipped:
-		err := fmt.Errorf("cannot start stage '%v' because it was skipped", stageName)
+		err := &StageChangeError{fmt.Sprintf("cannot start stage '%v' because it was skipped", stageName)}
 		return Response{false, nil, m.isComplete}, err
-	default:
-		panic("unknown state")
 	}
 
 	if ignoreDependencies {
@@ -270,10 +260,10 @@ func (m *Mission) StartStage(stageName string, ignoreDependencies bool) (Respons
 				if m.graph.areUpstreamFinished(s) {
 					continue
 				} else {
-					err = fmt.Errorf("cannot start stage '%v' because skipped stage '%v' has unfinished upstream dependencies", stageName, dependency.Name)
+					err = &StageChangeError{fmt.Sprintf("cannot start stage '%v' because skipped stage '%v' has unfinished upstream dependencies", stageName, dependency.Name)}
 				}
 			case started, failed, ready:
-				err = fmt.Errorf("cannot start stage '%v' because it has unfinished upstream dependency '%v'", stageName, dependency.Name)
+				err = &StageChangeError{fmt.Sprintf("cannot start stage '%v' because it has unfinished upstream dependency '%v'", stageName, dependency.Name)}
 			}
 		}
 		return Response{false, nil, m.isComplete}, err
@@ -292,8 +282,7 @@ func (m *Mission) StartStage(stageName string, ignoreDependencies bool) (Respons
 // - are all upstream dependencies finished or skipped?
 func (m *Mission) FinishStage(stageName string, ignoreDependencies bool) (Response, error) {
 	if m.isComplete {
-		return Response{false, nil, true},
-			fmt.Errorf("mission has been completed, cannot operate further")
+		return Response{false, nil, true}, &CompletedError{}
 	}
 	s, err := m.GetStage(stageName)
 	if err != nil {
@@ -306,16 +295,14 @@ func (m *Mission) FinishStage(stageName string, ignoreDependencies bool) (Respon
 	case started:
 		// ok
 	case excluded, skipped, ready:
-		err := fmt.Errorf("cannot finish stage '%v' because it has not been started", stageName)
+		err := &StageChangeError{fmt.Sprintf("cannot finish stage '%v' because it has not been started", stageName)}
 		return Response{false, nil, m.isComplete}, err
 	case finished:
-		err := fmt.Errorf("stage '%v' is already finished", stageName)
+		err := &StageChangeError{fmt.Sprintf("stage '%v' is already finished", stageName)}
 		return Response{false, nil, m.isComplete}, err
 	case failed:
-		err := fmt.Errorf("cannot finish stage '%v' because it is marked as failed", stageName)
+		err := &StageChangeError{fmt.Sprintf("cannot finish stage '%v' because it is marked as failed", stageName)}
 		return Response{false, nil, m.isComplete}, err
-	default:
-		panic("unknown state") // should be impossible
 	}
 
 	// change the state
@@ -345,8 +332,7 @@ func (m *Mission) FinishStage(stageName string, ignoreDependencies bool) (Respon
 // - are all upstream dependencies finished or skipped?
 func (m *Mission) SkipStage(stageName string) (Response, error) {
 	if m.isComplete {
-		return Response{false, nil, true},
-			fmt.Errorf("mission has been completed, cannot operate further")
+		return Response{false, nil, true}, &CompletedError{}
 	}
 	// Does stage exist
 	s, err := m.GetStage(stageName)
@@ -354,17 +340,15 @@ func (m *Mission) SkipStage(stageName string) (Response, error) {
 		return Response{false, nil, m.isComplete}, err
 	}
 
-	//   Check the state of the stage
+	// Check the state of the stage
 	switch s.State {
 	case ready:
 		s.State = skipped
 	case skipped, excluded, finished:
 		// this is allowed, but state will not be changed - mission logic should not be affected
 	case started, failed:
-		err := fmt.Errorf("cannot skip stage '%v' because it has previously been %s", stageName, s.State)
+		err := &StageChangeError{fmt.Sprintf("cannot skip stage '%v' because it has previously been %s", stageName, s.State)}
 		return Response{false, nil, m.isComplete}, err
-	default:
-		panic("unknown state") // should be impossible
 	}
 
 	nextStages := m.Next()
@@ -380,8 +364,7 @@ func (m *Mission) SkipStage(stageName string) (Response, error) {
 // - state can't be ready, failed, excluded, skipped or failed, just started
 func (m *Mission) FailStage(stageName string) (Response, error) {
 	if m.isComplete {
-		return Response{false, nil, true},
-			fmt.Errorf("mission has been completed, cannot operate further")
+		return Response{false, nil, true}, &CompletedError{}
 	}
 	// does stage exist
 	s, err := m.GetStage(stageName)
@@ -394,10 +377,8 @@ func (m *Mission) FailStage(stageName string) (Response, error) {
 	case started:
 		// ok
 	case ready, excluded, skipped, finished, failed:
-		err := fmt.Errorf("cannot fail stage '%v' because it is %s, not started", stageName, s.State)
+		err := &StageChangeError{fmt.Sprintf("cannot fail stage '%v' because it is %s, not started", stageName, s.State)}
 		return Response{false, nil, m.isComplete}, err
-	default:
-		panic("unknown state") // should be impossible
 	}
 
 	s.State = failed
@@ -411,8 +392,7 @@ func (m *Mission) FailStage(stageName string) (Response, error) {
 // - all downstream dependencies must be excluded too
 func (m *Mission) ExcludeStage(stageName string) (Response, error) {
 	if m.isComplete {
-		return Response{false, nil, true},
-			fmt.Errorf("mission has been completed, cannot operate further")
+		return Response{false, nil, true}, &CompletedError{}
 	}
 	// does stage exist
 	s, err := m.GetStage(stageName)
@@ -445,7 +425,7 @@ func (m *Mission) tryExcludingStage(s *Stage) error {
 		// this is allowed, but state will not be changed - mission logic should not be affected
 		return nil
 	case started, failed:
-		err := fmt.Errorf("cannot exclude stage '%v' because it is %s, not ready", s.Name, s.State)
+		err := &StageChangeError{fmt.Sprintf("cannot exclude stage '%v' because it is %s, not ready", s.Name, s.State)}
 		return err
 	}
 	return nil
