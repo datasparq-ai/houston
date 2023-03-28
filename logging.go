@@ -1,11 +1,11 @@
 package main
 
 import (
-    "encoding/json"
-	"github.com/sirupsen/logrus"
+	"encoding/json"
 	"github.com/gorilla/mux"
-	"os"
+	"github.com/sirupsen/logrus"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -66,30 +66,29 @@ func SetLoggingFile(key string) {
 // @Failure 404,500 {object} model.Error
 // @Router /api/v1/logs [get]
 func (a *API) GetLogs(w http.ResponseWriter, r *http.Request) {
-    key := r.Header.Get("x-access-key") // key has been checked by checkKey middleware
-    vars := mux.Vars(r)
-    logDate := vars["logDate"]
-    var requiredLogDate string
+	key := r.Header.Get("x-access-key") // key has been checked by checkKey middleware
+	vars := mux.Vars(r)
+	logDate := vars["logDate"]
+	var requiredLogDate string
 
-    if logDate == "" {
-        dtToday := time.Now()
-        today := dtToday.Format("01022006")
-        requiredLogDate = today
-    } else {
-        requiredLogDate = logDate
-    }
+	if logDate == "" {
+		dtToday := time.Now()
+		today := dtToday.Format("01022006")
+		requiredLogDate = today
+	} else {
+		requiredLogDate = logDate
+	}
 
-    var logFileName string
-    logFileName = "logs/key_" + key + "_" + requiredLogDate + "_log.txt"
-    contents, err := os.ReadFile(logFileName)
-    if err != nil {
+	var logFileName string
+	logFileName = "logs/key_" + key + "_" + requiredLogDate + "_log.txt"
+	contents, err := os.ReadFile(logFileName)
+	if err != nil {
 		handleError(err, w)
 	}
 	var logs string
 	logs = string(contents)
 
-
-    payload, _ := json.Marshal(logs)
+	payload, _ := json.Marshal(logs)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(payload)
 }
