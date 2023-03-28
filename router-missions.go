@@ -19,7 +19,7 @@ import (
 // @Tags Mission
 // @Param x-access-key header string true "Houston Key"
 // @Param id path string true "The id of the mission"
-// @Success 200 {object} model.Success
+// @Success 200 {object} mission.Mission
 // @Failure 404,500 {object} model.Error
 // @Router /api/v1/missions/{id} [get]
 func (a *API) GetMission(w http.ResponseWriter, r *http.Request) {

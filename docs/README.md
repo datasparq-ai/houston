@@ -23,8 +23,9 @@ Quick links:
 
 ## Articles
 
-[Overview](todo)
-[Concepts](./concepts.md)
+[Overview](overview.md)
+[Concepts](concepts.md)
+- [Mission Logic](mission_logic.md)
 
 [Services](services.md)
 - [Commands](commands.md)
