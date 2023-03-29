@@ -2,11 +2,13 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/gorilla/mux"
-	"github.com/sirupsen/logrus"
+	"io"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 )
 
 var log *logrus.Logger
@@ -20,15 +22,16 @@ func initLog() {
 	err := os.MkdirAll("logs", 0700)
 	if err == nil {
 		SetLoggingFile("")
+		log.Info("Logging started successfully")
 	} else {
 		log.SetOutput(os.Stderr)
 		log.Info("Failed to log to file, using default stderr")
 	}
 
-	log.Debug("Useful debugging information.")
-	log.Info("Something noteworthy happened!")
-	log.Warn("You should probably take a look at this.")
-	log.Error("Something failed but I'm not quitting.")
+	// log.Debug("Useful debugging information.")
+	// log.Info("Something noteworthy happened!")
+	// log.Warn("You should probably take a look at this.")
+	// log.Error("Something failed but I'm not quitting.")
 }
 
 // SetLoggingFile switches the logging output file to a file specific to the key and the current day. If no key is
@@ -48,7 +51,12 @@ func SetLoggingFile(key string) {
 	file, err := os.OpenFile(logFileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 
 	if err == nil {
-		log.SetOutput(file)
+		if key == "" {
+			mw := io.MultiWriter(os.Stdout, file)
+			log.SetOutput(mw)
+		} else {
+			log.SetOutput(file)
+		}
 	} else {
 		log.SetOutput(os.Stderr)
 		log.Info("Failed to log to file, using default stderr")
