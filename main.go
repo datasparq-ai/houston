@@ -3,12 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/datasparq-ai/houston/client"
-	"github.com/datasparq-ai/houston/database"
-	"github.com/datasparq-ai/houston/mission"
-	"github.com/datasparq-ai/houston/model"
-	"github.com/gorilla/mux"
-	"github.com/spf13/cobra"
 	"math/rand"
 	"net"
 	"net/http"
@@ -16,6 +10,13 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/datasparq-ai/houston/client"
+	"github.com/datasparq-ai/houston/database"
+	"github.com/datasparq-ai/houston/mission"
+	"github.com/datasparq-ai/houston/model"
+	"github.com/gorilla/mux"
+	"github.com/spf13/cobra"
 )
 
 type API struct {
@@ -43,14 +44,18 @@ func New(configPath string) API {
 		switch e.Err.(type) {
 		case *os.SyscallError:
 			// TODO: fail in production mode (and unittest mode)
-			fmt.Printf("Couldn't connect to Redis Database at %v. Using in-memory database.\n", config.Redis.Addr)
+			log.Warnf("Couldn't connect to Redis Database at %v. Using in-memory database.\n", config.Redis.Addr)
 			db = database.NewLocalDatabase()
 		case *net.AddrError:
+			log.Fatal("Do not add protocol to Redis.Addr")
+			log.Panic(err)
 			panic(err) // this happens when user puts protocol in Redis.Addr
 		default:
+			log.Panic(err)
 			panic(err)
 		}
 	default:
+		log.Panic(err)
 		panic(err)
 	}
 
@@ -133,7 +138,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 		if p, ok := a.db.Get(key, "p|"+planNameOrPlan); ok {
 			planBytes = []byte(p)
 		} else {
-		    log.Debugf("")
+			log.Debugf("")
 			return "", fmt.Errorf("no plan found named '%v'", planNameOrPlan)
 
 		}
@@ -157,7 +162,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 
 	// convert plan to mission
 	m := NewMissionFromPlan(&plan)
-    log.Infof("Converted Plan to Mission")
+	log.Infof("Converted Plan to Mission")
 
 	// validate graph
 	validationError := m.Validate()
@@ -193,19 +198,19 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 		}
 	} else {
 		if strings.ContainsAny(missionId, string(disallowedCharacters)) {
-		    log.Debug("Ensure mission does not have an id that contains invalid characters.")
+			log.Debug("Ensure mission does not have an id that contains invalid characters.")
 			return "", fmt.Errorf("mission with id '%v' is not allowed because it contains invalid characters", missionId)
 		}
 		// check for disallowed ids (reserved keys)
 		for _, k := range reservedKeys {
 			if missionId == k {
-			    log.Debug("Ensure mission does not have an id that is reserved.")
+				log.Debug("Ensure mission does not have an id that is reserved.")
 				return "", fmt.Errorf("mission with id '%v' is not allowed", missionId)
 			}
 		}
 		// check if mission id already exists
 		if _, exists := a.db.Get(key, missionId); exists {
-		    log.Debug("Ensure mission does not have the same id as an existing mission.")
+			log.Debug("Ensure mission does not have the same id as an existing mission.")
 			return "", fmt.Errorf("mission with id '%v' already exists", missionId)
 		}
 	}
@@ -367,7 +372,7 @@ func (a *API) SavePlan(key string, plan model.Plan) error {
 // The complete list of plans is the union of all saved plans and all active plans
 func (a *API) ListPlans(key string) ([]string, error) {
 
-    log.Infof("Listing plans attributed with key '%s'", key)
+	log.Infof("Listing plans attributed with key '%s'", key)
 	plans, err := a.db.List(key, "p")
 	for i, s := range plans {
 		plans[i] = strings.Replace(s, "p|", "", 1)
@@ -413,6 +418,7 @@ func (a *API) initDashboard() {
 		} else {
 			html, err = os.ReadFile(a.config.Dashboard.Src)
 			if err != nil {
+				log.Panic(err)
 				panic(err)
 			}
 		}
@@ -429,6 +435,7 @@ func (a *API) Run() {
 	fmt.Printf("📡 Houston ready to receive calls on http://localhost:%v/api/v1\n", a.config.Port)
 	err := http.ListenAndServe(":"+a.config.Port, a.router)
 	if err != nil {
+		log.Panic(err)
 		panic(err)
 	}
 }
@@ -490,6 +497,7 @@ func main() {
 				Run: func(c *cobra.Command, args []string) {
 					err := client.CreateKey(id, name, password)
 					if err != nil {
+						log.Panic(err)
 						panic(err)
 					}
 				},
@@ -509,6 +517,7 @@ func main() {
 				Run: func(c *cobra.Command, args []string) {
 					err := client.Save(plan)
 					if err != nil {
+						log.Panic(err)
 						panic(err)
 					}
 				},
@@ -533,6 +542,7 @@ func main() {
 						strings.Split(strings.Replace(exclude, " ", "", -1), ","),
 						strings.Split(strings.Replace(skip, " ", "", -1), ","))
 					if err != nil {
+						log.Panic(err)
 						panic(err)
 					}
 				},
