@@ -31,7 +31,9 @@ type API struct {
 // local db will only persist while program is running.
 func New(configPath string) API {
 
+	log.Debugf("Loading configuration from %s", configPath)
 	config := LoadConfig(configPath)
+	log.Debug("Configuration Loaded")
 
 	var db database.Database
 	// attempt to connect to redis - if not found then use local db
@@ -39,12 +41,12 @@ func New(configPath string) API {
 	err := db.Ping()
 	switch e := err.(type) {
 	case nil:
-		fmt.Printf("🚨 Connected to Redis Database at %v\n", config.Redis.Addr)
+		log.Infof("🚨 Connected to Redis Database at %v\n", config.Redis.Addr)
 	case *net.OpError:
 		switch e.Err.(type) {
 		case *os.SyscallError:
 			// TODO: fail in production mode (and unittest mode)
-			log.Warnf("Couldn't connect to Redis Database at %v. Using in-memory database.\n", config.Redis.Addr)
+			log.Warnf("⚠️ Couldn't connect to Redis Database at %v. Using in-memory database.\n", config.Redis.Addr)
 			db = database.NewLocalDatabase()
 		case *net.AddrError:
 			log.Fatal("Do not add protocol to Redis.Addr")
@@ -61,17 +63,24 @@ func New(configPath string) API {
 
 	a := API{db, nil, nil, config}
 
+	log.Debug("API Instance Created")
+
 	config.Password = strings.Trim(config.Password, " \n\t")
 	if config.Password != "" {
 		err := a.SetPassword(config.Password)
 		if err != nil {
 			log.Fatal(err)
 		}
+	} else {
+		log.Warn("⚠️ No password has been set! Server will continue setting up but will not be secure.")
 	}
 
 	a.initRouter()
+	log.Debug("Router initialised")
 	a.initDashboard()
+	log.Debug("Dashboard initialsied")
 	a.initWebSocket()
+	log.Debug("Websocket initialised")
 	return a
 }
 
@@ -95,6 +104,7 @@ func (a *API) CreateKey(key string, name string) (string, error) {
 	// if key is not provided then create random key of length 40
 	if key == "" {
 		key = createRandomString(40)
+		log.Debug("Random key has been generated")
 	}
 
 	err := a.db.CreateKey(key)
@@ -117,7 +127,11 @@ func (a *API) CreateKey(key string, name string) (string, error) {
 
 func (a *API) deleteKey(key string) error {
 	err := a.db.DeleteKey(key)
-	log.Infof("Deleted key with name '%s'", key)
+	if err == nil {
+		log.Infof("Deleted key with name '%s'", key)
+	} else {
+		log.Errorf("Key deletion failed: %s", err)
+	}
 	return err
 }
 
@@ -138,8 +152,9 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 		if p, ok := a.db.Get(key, "p|"+planNameOrPlan); ok {
 			planBytes = []byte(p)
 		} else {
-			log.Debugf("")
-			return "", fmt.Errorf("no plan found named '%v'", planNameOrPlan)
+			errorMessage := fmt.Errorf("no plan found named '%v'", planNameOrPlan)
+			log.Error(errorMessage)
+			return "", errorMessage
 
 		}
 
@@ -153,11 +168,14 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 	var plan model.Plan
 	err := json.Unmarshal(planBytes, &plan) // this will catch any invalid params, services, etc.
 	if err != nil {
+		log.Errorf("JSON/Schema Error: %s", err)
 		return "", err // TODO: catch json/schema errors and give helpful response
 	}
 
 	if strings.ContainsAny(plan.Name, string(disallowedCharacters)) {
-		return "", fmt.Errorf("plan with name '%v' is not allowed because it contains invalid characters", plan.Name)
+		errorMessage := fmt.Errorf("Plan with name '%v' is not allowed because it contains invalid characters", plan.Name)
+		log.Error(errorMessage)
+		return "", errorMessage
 	}
 
 	// convert plan to mission
@@ -166,15 +184,18 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 
 	// validate graph
 	validationError := m.Validate()
-	log.Infof("Validated Mission Graph")
 	if validationError != nil {
+		log.Errorf("Graph validation failed: %s", validationError)
 		return "", validationError
+	} else {
+		log.Infof("Validated Mission Graph")
 	}
 
 	if missionId == "" {
 		// if no id is provided, use the key's usage count
 		usage, _ := a.db.Get(key, "u")
 		missionId = "m" + usage
+		log.Debugf("MissionID not provided. ID used instead: %s", missionId)
 
 		// check if mission id already exists
 		if _, exists := a.db.Get(key, missionId); exists {
@@ -187,7 +208,9 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 				usageInt = usageInt + 1
 				if usageInt > 500 {
 					// this should be impossible because nobody would have this many missions at the same time
-					return "", fmt.Errorf("couldn't create a mission because a new mission ID could not be generated")
+					errorMessage := fmt.Errorf("couldn't create a mission because a new mission ID could not be generated")
+					log.Error(errorMessage)
+					return "", errorMessage
 				}
 				missionId = fmt.Sprintf("m%v", usageInt)
 				if _, exists := a.db.Get(key, missionId); !exists {
@@ -198,20 +221,23 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 		}
 	} else {
 		if strings.ContainsAny(missionId, string(disallowedCharacters)) {
-			log.Debug("Ensure mission does not have an id that contains invalid characters.")
-			return "", fmt.Errorf("mission with id '%v' is not allowed because it contains invalid characters", missionId)
+			errorMessage := fmt.Errorf("mission with id '%v' is not allowed because it contains invalid characters", missionId)
+			log.Error(errorMessage)
+			return "", errorMessage
 		}
 		// check for disallowed ids (reserved keys)
 		for _, k := range reservedKeys {
 			if missionId == k {
-				log.Debug("Ensure mission does not have an id that is reserved.")
-				return "", fmt.Errorf("mission with id '%v' is not allowed", missionId)
+				errorMessage := fmt.Errorf("mission with id '%v' is not allowed", missionId)
+				log.Errorf(" %s. Ensure mission does not have an id that is reserved.", errorMessage)
+				return "", errorMessage
 			}
 		}
 		// check if mission id already exists
 		if _, exists := a.db.Get(key, missionId); exists {
-			log.Debug("Ensure mission does not have the same id as an existing mission.")
-			return "", fmt.Errorf("mission with id '%v' already exists", missionId)
+			errorMessage := fmt.Errorf("mission with id '%v' already exists", missionId)
+			log.Errorf("%s. Ensure mission does not have the same id as an existing mission.", errorMessage)
+			return "", errorMessage
 		}
 	}
 	m.Id = missionId
@@ -227,10 +253,13 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 	activeMissions += m.Id
 	err1 := a.db.Set(key, "a|"+m.Name, activeMissions)
 	if err1 != nil {
+		log.Error(err)
 		return m.Id, err1 // TODO: how to recover from this err?
 	}
 
 	a.ws <- message{key, "missionCreation", m.Bytes()}
+
+	log.Infof("Mission with id '%v' has been successfully created", missionId)
 
 	return m.Id, nil
 }
