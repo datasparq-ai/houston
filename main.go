@@ -296,14 +296,16 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 // ActiveMissions finds all missions for a plan. If plan doesn't exist then an empty list is returned.
 func (a *API) ActiveMissions(key string, plan string) []string {
 	SetLoggingFile(key)
-	log.Debugf("%s makes ActiveMissions request", key)
 	missions, _ := a.db.Get(key, "a|"+plan)
 	if missions == "" {
+		log.Debugf("No missions found")
+		SetLoggingFile("")
+		log.Debugf("User %s requested active missions for plan %s but none were found", key, plan)
 		return []string{}
 	}
-	log.Debugf("Missions returned: %s", missions)
+	log.Infof("Missions returned: %s", missions)
 	SetLoggingFile("")
-	log.Infof("User %s has requested active missions for plan %s", key, plan)
+	log.Infof("User %s has found %v active missions for plan %s", key, len(missions), plan)
 	return strings.Split(missions, ",")
 }
 
@@ -316,6 +318,9 @@ func (a *API) AllActiveMissions(key string) ([]string, error) {
 	SetLoggingFile(key)
 	allKeys, err := a.db.List(key, "")
 	if err != nil {
+		log.Errorf("Error when getting all active missions: %v", err)
+		SetLoggingFile("")
+		log.Debugf("User %s has encountered error %v in AllActiveMissions", key, err)
 		return missions, err
 	}
 	for _, s := range allKeys {
@@ -324,10 +329,10 @@ func (a *API) AllActiveMissions(key string) ([]string, error) {
 		}
 		missions = append(missions, s)
 	}
-	log.Infof("All active missions found in the API database attributed to key '%s'", key)
+	log.Infof("All active missions found in the API database attributed to key %s", key)
 	log.Debug("Inactive and archived missions are not stored in the API database")
 	SetLoggingFile("")
-	log.Infof("User %s has requested ALL active missions", key)
+	log.Infof("User %s has requested ALL active missions and found %v", key, len(missions))
 
 	return missions, err
 }
