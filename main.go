@@ -164,6 +164,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 			errorMessage := fmt.Errorf("no plan found named '%v'", planNameOrPlan)
 			log.Error(errorMessage)
 			SetLoggingFile("")
+			log.Debugf("User %s has encountered error %s in CreateMissionFromPlan", key, errorMessage)
 			return "", errorMessage
 
 		}
@@ -180,13 +181,15 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 	if err != nil {
 		log.Errorf("JSON/Schema Error: %s", err)
 		SetLoggingFile("")
+		log.Debugf("User %s has encountered error %s in CreateMissionFromPlan", key, err)
 		return "", err // TODO: catch json/schema errors and give helpful response
 	}
 
 	if strings.ContainsAny(plan.Name, string(disallowedCharacters)) {
-		errorMessage := fmt.Errorf("Plan with name '%v' is not allowed because it contains invalid characters", plan.Name)
+		errorMessage := fmt.Errorf("plan with name '%v' is not allowed because it contains invalid characters", plan.Name)
 		log.Error(errorMessage)
 		SetLoggingFile("")
+		log.Debugf("User %s has encountered error %s in CreateMissionFromPlan", key, errorMessage)
 		return "", errorMessage
 	}
 
@@ -199,6 +202,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 	if validationError != nil {
 		log.Errorf("Graph validation failed: %s", validationError)
 		SetLoggingFile("")
+		log.Debugf("User %s has encountered error %s in CreateMissionFromPlan", key, validationError)
 		return "", validationError
 	} else {
 		log.Infof("Validated Mission Graph")
@@ -224,6 +228,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 					errorMessage := fmt.Errorf("couldn't create a mission because a new mission ID could not be generated")
 					log.Error(errorMessage)
 					SetLoggingFile("")
+					log.Debugf("User %s has encountered error %s in CreateMissionFromPlan", key, errorMessage)
 					return "", errorMessage
 				}
 				missionId = fmt.Sprintf("m%v", usageInt)
@@ -238,6 +243,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 			errorMessage := fmt.Errorf("mission with id '%v' is not allowed because it contains invalid characters", missionId)
 			log.Error(errorMessage)
 			SetLoggingFile("")
+			log.Debugf("User %s has encountered error %s in CreateMissionFromPlan", key, errorMessage)
 			return "", errorMessage
 		}
 		// check for disallowed ids (reserved keys)
@@ -246,6 +252,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 				errorMessage := fmt.Errorf("mission with id '%v' is not allowed", missionId)
 				log.Errorf(" %s. Ensure mission does not have an id that is reserved.", errorMessage)
 				SetLoggingFile("")
+				log.Debugf("User %s has encountered error %s in CreateMissionFromPlan", key, errorMessage)
 				return "", errorMessage
 			}
 		}
@@ -254,6 +261,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 			errorMessage := fmt.Errorf("mission with id '%v' already exists", missionId)
 			log.Errorf("%s. Ensure mission does not have the same id as an existing mission.", errorMessage)
 			SetLoggingFile("")
+			log.Debugf("User %s has encountered error %s in CreateMissionFromPlan", key, errorMessage)
 			return "", errorMessage
 		}
 	}
@@ -270,7 +278,9 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 	activeMissions += m.Id
 	err1 := a.db.Set(key, "a|"+m.Name, activeMissions)
 	if err1 != nil {
-		log.Error(err)
+		log.Error(err1)
+		SetLoggingFile("")
+		log.Debugf("User %s has encountered error %s in CreateMissionFromPlan", key, err1)
 		return m.Id, err1 // TODO: how to recover from this err?
 	}
 
@@ -278,6 +288,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 
 	log.Infof("Mission with id '%v' has been successfully created", missionId)
 	SetLoggingFile("")
+	log.Infof("User %s has successfully created mission %v", key, missionId)
 
 	return m.Id, nil
 }
@@ -292,6 +303,7 @@ func (a *API) ActiveMissions(key string, plan string) []string {
 	}
 	log.Debugf("Missions returned: %s", missions)
 	SetLoggingFile("")
+	log.Infof("User %s has requested active missions for plan %s", key, plan)
 	return strings.Split(missions, ",")
 }
 
@@ -315,6 +327,7 @@ func (a *API) AllActiveMissions(key string) ([]string, error) {
 	log.Infof("All active missions found in the API database attributed to key '%s'", key)
 	log.Debug("Inactive and archived missions are not stored in the API database")
 	SetLoggingFile("")
+	log.Infof("User %s has requested ALL active missions", key)
 
 	return missions, err
 }
