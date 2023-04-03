@@ -164,7 +164,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 			errorMessage := fmt.Errorf("no plan found named '%v'", planNameOrPlan)
 			log.Error(errorMessage)
 			SetLoggingFile("")
-			log.Debugf("User %s has encountered error %s in CreateMissionFromPlan", key, errorMessage)
+			log.Debugf("User %s has encountered an error in CreateMissionFromPlan: %v", key, errorMessage)
 			return "", errorMessage
 
 		}
@@ -181,7 +181,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 	if err != nil {
 		log.Errorf("JSON/Schema Error: %s", err)
 		SetLoggingFile("")
-		log.Debugf("User %s has encountered error %s in CreateMissionFromPlan", key, err)
+		log.Debugf("User %s has encountered an error in CreateMissionFromPlan: %v", key, err)
 		return "", err // TODO: catch json/schema errors and give helpful response
 	}
 
@@ -189,7 +189,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 		errorMessage := fmt.Errorf("plan with name '%v' is not allowed because it contains invalid characters", plan.Name)
 		log.Error(errorMessage)
 		SetLoggingFile("")
-		log.Debugf("User %s has encountered error %s in CreateMissionFromPlan", key, errorMessage)
+		log.Debugf("User %s has encountered an error in CreateMissionFromPlan: %v", key, errorMessage)
 		return "", errorMessage
 	}
 
@@ -202,7 +202,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 	if validationError != nil {
 		log.Errorf("Graph validation failed: %s", validationError)
 		SetLoggingFile("")
-		log.Debugf("User %s has encountered error %s in CreateMissionFromPlan", key, validationError)
+		log.Debugf("User %s has encountered an error in CreateMissionFromPlan: %v", key, validationError)
 		return "", validationError
 	} else {
 		log.Infof("Validated Mission Graph")
@@ -228,7 +228,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 					errorMessage := fmt.Errorf("couldn't create a mission because a new mission ID could not be generated")
 					log.Error(errorMessage)
 					SetLoggingFile("")
-					log.Debugf("User %s has encountered error %s in CreateMissionFromPlan", key, errorMessage)
+					log.Debugf("User %s has encountered an error in CreateMissionFromPlan: %v", key, errorMessage)
 					return "", errorMessage
 				}
 				missionId = fmt.Sprintf("m%v", usageInt)
@@ -243,7 +243,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 			errorMessage := fmt.Errorf("mission with id '%v' is not allowed because it contains invalid characters", missionId)
 			log.Error(errorMessage)
 			SetLoggingFile("")
-			log.Debugf("User %s has encountered error %s in CreateMissionFromPlan", key, errorMessage)
+			log.Debugf("User %s has encountered an error in CreateMissionFromPlan: %v", key, errorMessage)
 			return "", errorMessage
 		}
 		// check for disallowed ids (reserved keys)
@@ -252,7 +252,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 				errorMessage := fmt.Errorf("mission with id '%v' is not allowed", missionId)
 				log.Errorf(" %s. Ensure mission does not have an id that is reserved.", errorMessage)
 				SetLoggingFile("")
-				log.Debugf("User %s has encountered error %s in CreateMissionFromPlan", key, errorMessage)
+				log.Debugf("User %s has encountered an error in CreateMissionFromPlan: %v", key, errorMessage)
 				return "", errorMessage
 			}
 		}
@@ -261,7 +261,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 			errorMessage := fmt.Errorf("mission with id '%v' already exists", missionId)
 			log.Errorf("%s. Ensure mission does not have the same id as an existing mission.", errorMessage)
 			SetLoggingFile("")
-			log.Debugf("User %s has encountered error %s in CreateMissionFromPlan", key, errorMessage)
+			log.Debugf("User %s has encountered an error in CreateMissionFromPlan: %v", key, errorMessage)
 			return "", errorMessage
 		}
 	}
@@ -280,7 +280,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 	if err1 != nil {
 		log.Error(err1)
 		SetLoggingFile("")
-		log.Debugf("User %s has encountered error %s in CreateMissionFromPlan", key, err1)
+		log.Debugf("User %s has encountered an error in CreateMissionFromPlan: %v", key, err1)
 		return m.Id, err1 // TODO: how to recover from this err?
 	}
 
@@ -320,7 +320,7 @@ func (a *API) AllActiveMissions(key string) ([]string, error) {
 	if err != nil {
 		log.Errorf("Error when getting all active missions: %v", err)
 		SetLoggingFile("")
-		log.Debugf("User %s has encountered error %v in AllActiveMissions", key, err)
+		log.Debugf("User %s has encountered an error in AllActiveMissions: %v", key, err)
 		return missions, err
 	}
 	for _, s := range allKeys {
@@ -350,6 +350,9 @@ func (a *API) UpdateStageState(key string, missionId string, stage string, state
 
 		m, err := mission.NewFromJSON([]byte(missionString))
 		if err != nil {
+			log.Errorf("Error when updating stage %s's state to %s in mission %s: %v", stage, state, missionId, err)
+			SetLoggingFile("")
+			log.Debugf("User %s has encountered an error in UpdateStageState: %v", key, err)
 			// an error here is unlikely because all missions are validated before they get saved
 			return "", err // TODO: catch json/schema errors and give helpful response
 		}
@@ -357,24 +360,33 @@ func (a *API) UpdateStageState(key string, missionId string, stage string, state
 		switch state {
 		case "started":
 			res, err = m.StartStage(stage, ignoreDependencies)
+			log.Infof("Stage %s in mission %s has started", stage, missionId)
 		case "finished":
 			res, err = m.FinishStage(stage, ignoreDependencies)
+			log.Infof("Stage %s in mission %s has finished", stage, missionId)
 		case "skipped":
 			res, err = m.SkipStage(stage)
+			log.Debugf("Stage %s in mission %s was skipped", stage, missionId)
 		case "failed":
 			res, err = m.FailStage(stage)
+			log.Errorf("Stage %s in mission %s failed", stage, missionId)
 		case "excluded", "ignored":
 			res, err = m.ExcludeStage(stage)
+			log.Debugf("Stage %s in mission %s was ignored", stage, missionId)
 		default:
 			err = fmt.Errorf("invalid stage state '%v'; choose one of started, finished, failed, skipped, or excluded", state)
 		}
 
 		if err != nil {
+			log.Errorf("Error when updating stage %s's state to %s in mission %s: %v", stage, state, missionId, err)
+			SetLoggingFile("")
+			log.Debugf("User %s has encountered an error in UpdateStageState: %v", key, err)
 			return "", err
 		}
 
 		missionBytes = m.Bytes()
 		SetLoggingFile("")
+		log.Infof("Stage %s in user %s's mission %s successfully updated to %s", stage, key, missionId, state)
 
 		return string(missionBytes), err
 	}
