@@ -30,7 +30,7 @@ type API struct {
 // It will create or connect to a database depending on the settings in the config file.
 // local db will only persist while program is running.
 func New(configPath string) API {
-
+	SetLoggingFile("")
 	log.Debugf("Loading configuration from %s", configPath)
 	config := LoadConfig(configPath)
 	log.Debug("Configuration Loaded")
@@ -85,6 +85,8 @@ func New(configPath string) API {
 }
 
 func (a *API) SetPassword(password string) error {
+	SetLoggingFile("")
+
 	if len(password) < 10 {
 		return fmt.Errorf("Password provided is not long enough. Houston admin password must be at least 10 characters. Recommended length is 30.")
 	}
@@ -100,6 +102,7 @@ func (a *API) SetPassword(password string) error {
 
 // CreateKey initialises a new key/project. This is a different concept to Redis keys.
 func (a *API) CreateKey(key string, name string) (string, error) {
+	SetLoggingFile("")
 
 	// if key is not provided then create random key of length 40
 	if key == "" {
@@ -121,17 +124,22 @@ func (a *API) CreateKey(key string, name string) (string, error) {
 	}
 
 	log.Infof("Created key with ID '%s' and name '%s'", key, name)
+	SetLoggingFile(key)
+	log.Infof("Created key with ID '%s' and name '%s'", key, name)
+	SetLoggingFile("")
 
 	return key, nil
 }
 
 func (a *API) deleteKey(key string) error {
+	SetLoggingFile(key)
 	err := a.db.DeleteKey(key)
 	if err == nil {
 		log.Infof("Deleted key with name '%s'", key)
 	} else {
 		log.Errorf("Key deletion failed: %s", err)
 	}
+	SetLoggingFile("")
 	return err
 }
 
@@ -147,6 +155,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 
 	var planBytes []byte
 
+	SetLoggingFile(key)
 	// if plan name is provided then load plan
 	if !strings.Contains(planNameOrPlan, "{") {
 		if p, ok := a.db.Get(key, "p|"+planNameOrPlan); ok {
@@ -154,6 +163,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 		} else {
 			errorMessage := fmt.Errorf("no plan found named '%v'", planNameOrPlan)
 			log.Error(errorMessage)
+			SetLoggingFile("")
 			return "", errorMessage
 
 		}
@@ -169,12 +179,14 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 	err := json.Unmarshal(planBytes, &plan) // this will catch any invalid params, services, etc.
 	if err != nil {
 		log.Errorf("JSON/Schema Error: %s", err)
+		SetLoggingFile("")
 		return "", err // TODO: catch json/schema errors and give helpful response
 	}
 
 	if strings.ContainsAny(plan.Name, string(disallowedCharacters)) {
 		errorMessage := fmt.Errorf("Plan with name '%v' is not allowed because it contains invalid characters", plan.Name)
 		log.Error(errorMessage)
+		SetLoggingFile("")
 		return "", errorMessage
 	}
 
@@ -186,6 +198,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 	validationError := m.Validate()
 	if validationError != nil {
 		log.Errorf("Graph validation failed: %s", validationError)
+		SetLoggingFile("")
 		return "", validationError
 	} else {
 		log.Infof("Validated Mission Graph")
@@ -210,6 +223,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 					// this should be impossible because nobody would have this many missions at the same time
 					errorMessage := fmt.Errorf("couldn't create a mission because a new mission ID could not be generated")
 					log.Error(errorMessage)
+					SetLoggingFile("")
 					return "", errorMessage
 				}
 				missionId = fmt.Sprintf("m%v", usageInt)
@@ -223,6 +237,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 		if strings.ContainsAny(missionId, string(disallowedCharacters)) {
 			errorMessage := fmt.Errorf("mission with id '%v' is not allowed because it contains invalid characters", missionId)
 			log.Error(errorMessage)
+			SetLoggingFile("")
 			return "", errorMessage
 		}
 		// check for disallowed ids (reserved keys)
@@ -230,6 +245,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 			if missionId == k {
 				errorMessage := fmt.Errorf("mission with id '%v' is not allowed", missionId)
 				log.Errorf(" %s. Ensure mission does not have an id that is reserved.", errorMessage)
+				SetLoggingFile("")
 				return "", errorMessage
 			}
 		}
@@ -237,6 +253,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 		if _, exists := a.db.Get(key, missionId); exists {
 			errorMessage := fmt.Errorf("mission with id '%v' already exists", missionId)
 			log.Errorf("%s. Ensure mission does not have the same id as an existing mission.", errorMessage)
+			SetLoggingFile("")
 			return "", errorMessage
 		}
 	}
@@ -260,16 +277,21 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 	a.ws <- message{key, "missionCreation", m.Bytes()}
 
 	log.Infof("Mission with id '%v' has been successfully created", missionId)
+	SetLoggingFile("")
 
 	return m.Id, nil
 }
 
 // ActiveMissions finds all missions for a plan. If plan doesn't exist then an empty list is returned.
 func (a *API) ActiveMissions(key string, plan string) []string {
+	SetLoggingFile(key)
+	log.Debugf("%s makes ActiveMissions request", key)
 	missions, _ := a.db.Get(key, "a|"+plan)
 	if missions == "" {
 		return []string{}
 	}
+	log.Debugf("Missions returned: %s", missions)
+	SetLoggingFile("")
 	return strings.Split(missions, ",")
 }
 
@@ -279,6 +301,7 @@ func (a *API) ActiveMissions(key string, plan string) []string {
 // efficient than using ActiveMissions.
 func (a *API) AllActiveMissions(key string) ([]string, error) {
 	var missions []string
+	SetLoggingFile(key)
 	allKeys, err := a.db.List(key, "")
 	if err != nil {
 		return missions, err
@@ -291,6 +314,7 @@ func (a *API) AllActiveMissions(key string) ([]string, error) {
 	}
 	log.Infof("All active missions found in the API database attributed to key '%s'", key)
 	log.Debug("Inactive and archived missions are not stored in the API database")
+	SetLoggingFile("")
 
 	return missions, err
 }
@@ -302,6 +326,7 @@ func (a *API) UpdateStageState(key string, missionId string, stage string, state
 	var res mission.Response
 	var missionBytes []byte
 
+	SetLoggingFile(key)
 	// define a function to perform on a mission within a transaction
 	txnFunc := func(missionString string) (string, error) {
 
@@ -331,6 +356,7 @@ func (a *API) UpdateStageState(key string, missionId string, stage string, state
 		}
 
 		missionBytes = m.Bytes()
+		SetLoggingFile("")
 
 		return string(missionBytes), err
 	}
@@ -355,29 +381,35 @@ func (a *API) UpdateStageState(key string, missionId string, stage string, state
 		completedListBytes := strings.Join(completedList, ",")
 		a.db.Set(key, "c", completedListBytes)
 	}
+	SetLoggingFile("")
 
 	return res, err
 }
 
 // CompletedMissions returns a list all missionIds that are completed so that they can be archived and deleted.
 func (a *API) CompletedMissions(key string) []string {
+	SetLoggingFile(key)
 	completedListString, ok := a.db.Get(key, "c")
 	if !ok || completedListString == "" { // this should never happen
+		SetLoggingFile("")
 		return []string{}
 	}
 	completedList := strings.Split(completedListString, ",")
 	log.Infof("Got list of completed missions attributed to key '%s'", key)
+	SetLoggingFile("")
 
 	return completedList
 }
 
 // SavePlan stores a new plan in the database if that plan is valid. Current behaviour is to overwrite existing plans.
 func (a *API) SavePlan(key string, plan model.Plan) error {
+	SetLoggingFile(key)
 
 	// convert plan to mission for validation of graph only
 	m := NewMissionFromPlan(&plan)
 	err := m.Validate()
 	if err != nil {
+		SetLoggingFile("")
 		return err
 	}
 
@@ -390,10 +422,12 @@ func (a *API) SavePlan(key string, plan model.Plan) error {
 		err = a.db.Set(key, "a|"+plan.Name, "")
 	}
 	if err != nil {
+		SetLoggingFile("")
 		return err
 	}
 	log.Infof("Plan '%s' has been saved.", plan.Name)
 	a.ws <- message{key, "planCreation", planBytes}
+	SetLoggingFile("")
 	return nil
 }
 
@@ -401,6 +435,7 @@ func (a *API) SavePlan(key string, plan model.Plan) error {
 // The complete list of plans is the union of all saved plans and all active plans
 func (a *API) ListPlans(key string) ([]string, error) {
 
+	SetLoggingFile(key)
 	log.Infof("Listing plans attributed with key '%s'", key)
 	plans, err := a.db.List(key, "p")
 	for i, s := range plans {
@@ -419,6 +454,7 @@ Loop:
 		}
 		plans = append(plans, s)
 	}
+	SetLoggingFile("")
 	return plans, err
 }
 
@@ -427,6 +463,7 @@ Loop:
 func (a *API) initDashboard() {
 	var html []byte
 	var err error
+	SetLoggingFile("")
 	if a.config.Dashboard.Enabled {
 		// serve the houston console
 		a.router.HandleFunc("/console", func(w http.ResponseWriter, r *http.Request) {
@@ -461,6 +498,7 @@ func (a *API) initDashboard() {
 }
 
 func (a *API) Run() {
+	SetLoggingFile("")
 	fmt.Printf("📡 Houston ready to receive calls on http://localhost:%v/api/v1\n", a.config.Port)
 	err := http.ListenAndServe(":"+a.config.Port, a.router)
 	if err != nil {
@@ -470,6 +508,7 @@ func (a *API) Run() {
 }
 
 func main() {
+	SetLoggingFile("")
 	rand.Seed(time.Now().UnixNano()) // change random seed
 	initLog()
 
