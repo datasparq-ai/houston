@@ -3,21 +3,21 @@
 
 To configure TLS/SSL for a Houston instance, and allow communication to and from the server via HTTPS, 
 you can either:
-1. Allow the Houston server to automatically generate/renew certificates via the [ACME protocol](https://en.wikipedia.org/wiki/Automatic_Certificate_Management_Environment)
+1. Configure your Houston server to automatically generate/renew certificates via the [ACME protocol](https://en.wikipedia.org/wiki/Automatic_Certificate_Management_Environment) and [Let's Encrypt](https://letsencrypt.org/)
 2. Provide your own certificate
 
 ## Automatic TLS/SSL Certificate Generation and Renewal
 
-Houston will use go's [acme.autocert](https://golang.org/x/crypto/acme/autocert) library to automatically generate a 
+Houston can use go's [acme.autocert](https://golang.org/x/crypto/acme/autocert) library to automatically generate a 
 certificate if a domain name is provided in the [config](./config.md#tls-config).
 
 The steps to configure this are as follows:
 
-1. Acquire a domain name or subdomain 
-2. Set `config.TLS.Host` to the value of your host name, e.g. 'houston.example.com'. See [TLS Config](./config.md#tls-config) for alternative ways to set this value.
-3. Start a houston server (`houston api`) 
+1. Acquire a domain name or subdomain
+2. Set `config.TLS.Host` to the value of your host name, e.g. 'houston.example.com'. See [TLS Config](./config.md#tls-config) for alternative ways to set this value. You must also provide a password for your server when using TLS (`config.Password`).
+3. Start a houston server (`houston api`). 
 4. Determine the (static) IP address of your Houston server
-5. Point the domain name to your server (described below) with DNS configuration 
+5. Point the domain name to your server with DNS records (described below)
 
 Example YAML config for auto TLS:
 
