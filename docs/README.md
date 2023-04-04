@@ -34,6 +34,7 @@ Quick links:
 
 API
 - [Config](config.md)
+- [Transport Layer Security (TLS) / Secure Socket Layer (SSL) / HTTPS](./tls.md)
 - [Database Schema](database_schema.md)
 - [Demo Mode](demo_mode.md)
 - [Docker](docker.md)

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"github.com/datasparq-ai/houston/client"
@@ -9,6 +10,7 @@ import (
 	"github.com/datasparq-ai/houston/model"
 	"github.com/gorilla/mux"
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/acme/autocert"
 	"log"
 	"math/rand"
 	"net"
@@ -20,10 +22,11 @@ import (
 )
 
 type API struct {
-	db     database.Database
-	router *mux.Router
-	ws     chan message
-	config *Config
+	db       database.Database
+	router   *mux.Router
+	ws       chan message
+	config   *Config
+	protocol string
 }
 
 // New creates the Houston API object.
@@ -55,13 +58,31 @@ func New(configPath string) API {
 		panic(err)
 	}
 
-	a := API{db, nil, nil, config}
+	// if non-default TLS cert is being used, or certs exist at the default location, try to use https
+	protocol := "http"
+	if config.TLS.Host != "" || config.TLS.CertFile != "cert.pem" || config.TLS.KeyFile != "key.pem" {
+		protocol = "https"
+	} else {
+		if _, err := os.Stat(config.TLS.CertFile); err == nil {
+			protocol = "https"
+		}
+		if _, err := os.Stat(config.TLS.KeyFile); err == nil {
+			protocol = "https"
+		}
+	}
+
+	a := API{db, nil, nil, config, protocol}
 
 	config.Password = strings.Trim(config.Password, " \n\t")
 	if config.Password != "" {
 		err := a.SetPassword(config.Password)
 		if err != nil {
 			log.Fatal(err)
+		}
+	} else {
+		if protocol == "https" {
+			// assume that https is being used because server is in production
+			log.Fatal("It is not recommended to run Houston in production without setting a server password, as this allows anyone to create or delete API keys.")
 		}
 	}
 
@@ -385,7 +406,6 @@ func (a *API) initDashboard() {
 			w.Write([]byte(`<html><link rel="stylesheet" type="text/css" href="https://storage.googleapis.com/houston-static/console/main.css"><script src="https://storage.googleapis.com/houston-static/console/main.js"></script></html>`))
 		})
 		if a.config.Dashboard.Src == "" {
-			// TODO: host on static.callhouston.io
 			html = []byte(`<!doctype html><html lang="en"><head><meta charset="utf-8"/>
  <link rel="icon" href="https://callhouston.io/houston-favicon.png"/>
  <meta name="viewport" content="width=device-width,initial-scale=1"/>
@@ -408,15 +428,57 @@ func (a *API) initDashboard() {
 		})
 	}
 
-	fmt.Printf("🔭 Mission dashboard is live on http://localhost:%v\n", a.config.Port)
+	if a.protocol == "https" {
+		fmt.Printf("🔭 Mission dashboard is live on https://%v\n", a.config.TLS.Host)
+	} else {
+		fmt.Printf("🔭 Mission dashboard is live on http://localhost:%v\n", a.config.Port)
+	}
 }
 
+// Run starts the API server
 func (a *API) Run() {
-	fmt.Printf("📡 Houston ready to receive calls on http://localhost:%v/api/v1\n", a.config.Port)
-	err := http.ListenAndServe(":"+a.config.Port, a.router)
-	if err != nil {
-		panic(err)
+
+	var err error
+	if a.protocol == "https" {
+
+		fmt.Printf("📡 Houston ready to receive calls on https://%v/api/v1\n", a.config.TLS.Host)
+
+		if a.config.TLS.Auto {
+			// use the ACME protocol to generate and renew certificates automatically
+			fmt.Printf("Automatic TLS is enabled. Houston will attempt to generate a certificate for %s.\n", a.config.TLS.Host)
+
+			certManager := autocert.Manager{
+				Prompt:     autocert.AcceptTOS,
+				HostPolicy: autocert.HostWhitelist(a.config.TLS.Host),
+				Cache:      autocert.DirCache("certs"),
+			}
+
+			server := &http.Server{
+				Addr:    ":https",
+				Handler: a.router,
+				TLSConfig: &tls.Config{
+					GetCertificate: certManager.GetCertificate,
+					MinVersion:     tls.VersionTLS12,
+				},
+			}
+
+			go http.ListenAndServe(":http", certManager.HTTPHandler(nil))
+
+			err = server.ListenAndServeTLS("", "") // key and cert are coming from Let's Encrypt
+
+		} else {
+			// if self-managed certificates are provided
+			err = http.ListenAndServeTLS(":https", a.config.TLS.CertFile, a.config.TLS.KeyFile, a.router)
+		}
+	} else {
+		fmt.Printf("📡 Houston ready to receive calls on http://localhost:%v/api/v1\n", a.config.Port)
+		err = http.ListenAndServe(":"+a.config.Port, a.router)
 	}
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
 }
 
 func main() {
@@ -445,7 +507,7 @@ func main() {
 				Use:   "version",
 				Short: "Print the version number",
 				Run: func(c *cobra.Command, args []string) {
-					fmt.Println("v0.1.3")
+					fmt.Println("v0.2.0")
 				},
 			}
 			return
