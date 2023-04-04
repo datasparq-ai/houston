@@ -36,7 +36,7 @@ Save a plan or update an existing plan.
 Example CLI command:
 
 ```bash
-houston save --plan=gs://my-bucket/apollo.yaml
+python -m houston save --plan=gs://my-bucket/apollo.yaml
 ```
 
 Example Python script - this requires a Houston API key to be available either as environment variable or using an alternative method:
@@ -80,13 +80,13 @@ mission is currently in progress.
 Example CLI command:
 
 ```bash
-houston delete --plan "my-plan"
+python -m houston delete --plan "my-plan"
 ```
 
 or
 
 ```bash
-houston delete --plan "my-plan" --mission_id "m1"
+python -m houston delete --plan "my-plan" --mission_id "m1"
 ```
 
 Example Python script:
@@ -115,7 +115,7 @@ For convenience, you can also provide stages that should be ignored for the miss
 Example CLI command:
 
 ```bash
-houston start --plan=apollo
+python -m houston start --plan=apollo
 ```
 
 Example Python script - starting all stages that don't have upstream dependencies:
@@ -254,7 +254,7 @@ service used should be the service used by the requested stage.
 Example CLI command:
 
 ```bash
-houston static-fire --plan=apollo --stage=main-engine-start
+python -m houston static-fire --plan=apollo --stage=main-engine-start
 ```
 
 Example Python script:

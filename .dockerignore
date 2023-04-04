@@ -1,0 +1,10 @@
+
+.idea
+.DS_Store
+
+# redis
+*.rdb
+
+/logs
+/examples
+/docs
