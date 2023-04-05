@@ -97,6 +97,7 @@ func (a *API) SetPassword(password string) error {
 	// Salt changes if the password is changed
 	a.config.Salt = createRandomString(10)
 	a.config.Password = hashPassword(password, a.config.Salt)
+	log.Infof("New password has been set")
 	return nil
 }
 
@@ -185,7 +186,6 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 	if err != nil {
 		log.Errorf("JSON/Schema Error: %s", err)
 		SetLoggingFile("")
-		log.Warnf("User %s has encountered an error in CreateMissionFromPlan: %v", key, err)
 		return "", err // TODO: catch json/schema errors and give helpful response
 	}
 
@@ -193,7 +193,6 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 		errorMessage := fmt.Errorf("plan with name '%v' is not allowed because it contains invalid characters", plan.Name)
 		log.Error(errorMessage)
 		SetLoggingFile("")
-		log.Warnf("User %s has encountered an error in CreateMissionFromPlan: %v", key, errorMessage)
 		return "", errorMessage
 	}
 
@@ -206,7 +205,6 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 	if validationError != nil {
 		log.Errorf("Graph validation failed: %s", validationError)
 		SetLoggingFile("")
-		log.Warnf("User %s has encountered an error in CreateMissionFromPlan: %v", key, validationError)
 		return "", validationError
 	} else {
 		log.Infof("Validated Mission Graph")
@@ -232,7 +230,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 					errorMessage := fmt.Errorf("couldn't create a mission because a new mission ID could not be generated")
 					log.Error(errorMessage)
 					SetLoggingFile("")
-					log.Warnf("User %s has encountered an error in CreateMissionFromPlan: %v", key, errorMessage)
+					log.Warnf("User %s has reached the limit of 500 missions", key)
 					return "", errorMessage
 				}
 				missionId = fmt.Sprintf("m%v", usageInt)
@@ -247,7 +245,6 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 			errorMessage := fmt.Errorf("mission with id '%v' is not allowed because it contains invalid characters", missionId)
 			log.Error(errorMessage)
 			SetLoggingFile("")
-			log.Warnf("User %s has encountered an error in CreateMissionFromPlan: %v", key, errorMessage)
 			return "", errorMessage
 		}
 		// check for disallowed ids (reserved keys)
@@ -256,7 +253,6 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 				errorMessage := fmt.Errorf("mission with id '%v' is not allowed", missionId)
 				log.Errorf(" %s. Ensure mission does not have an id that is reserved.", errorMessage)
 				SetLoggingFile("")
-				log.Warnf("User %s has encountered an error in CreateMissionFromPlan: %v", key, errorMessage)
 				return "", errorMessage
 			}
 		}
@@ -265,7 +261,6 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 			errorMessage := fmt.Errorf("mission with id '%v' already exists", missionId)
 			log.Errorf("%s. Ensure mission does not have the same id as an existing mission.", errorMessage)
 			SetLoggingFile("")
-			log.Warnf("User %s has encountered an error in CreateMissionFromPlan: %v", key, errorMessage)
 			return "", errorMessage
 		}
 	}
@@ -284,7 +279,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 	if err1 != nil {
 		log.Error(err1)
 		SetLoggingFile("")
-		log.Warnf("User %s has encountered an error in CreateMissionFromPlan: %v", key, err1)
+		log.Warnf("User %s has encountered an error in CreateMissionFromPlan when updating database: %v", key, err1)
 		return m.Id, err1 // TODO: how to recover from this err?
 	}
 
@@ -292,7 +287,6 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 
 	log.Infof("Mission with id '%v' has been successfully created", missionId)
 	SetLoggingFile("")
-	log.Infof("User %s has successfully created mission %v", key, missionId)
 
 	return m.Id, nil
 }
@@ -304,12 +298,10 @@ func (a *API) ActiveMissions(key string, plan string) []string {
 	if missions == "" {
 		log.Debugf("No missions found")
 		SetLoggingFile("")
-		log.Debugf("User %s requested active missions for plan %s but none were found", key, plan)
 		return []string{}
 	}
 	log.Infof("Missions returned: %s", missions)
 	SetLoggingFile("")
-	log.Infof("User %s has found %v active missions for plan %s", key, len(missions), plan)
 	return strings.Split(missions, ",")
 }
 
@@ -324,7 +316,6 @@ func (a *API) AllActiveMissions(key string) ([]string, error) {
 	if err != nil {
 		log.Errorf("Error when getting all active missions: %v", err)
 		SetLoggingFile("")
-		log.Warnf("User %s has encountered an error in AllActiveMissions: %v", key, err)
 		return missions, err
 	}
 	for _, s := range allKeys {
@@ -336,7 +327,6 @@ func (a *API) AllActiveMissions(key string) ([]string, error) {
 	log.Infof("All active missions found in the API database attributed to key %s", key)
 	log.Debug("Inactive and archived missions are not stored in the API database")
 	SetLoggingFile("")
-	log.Infof("User %s has requested ALL active missions and found %v", key, len(missions))
 
 	return missions, err
 }
@@ -356,7 +346,6 @@ func (a *API) UpdateStageState(key string, missionId string, stage string, state
 		if err != nil {
 			log.Errorf("Error when updating stage %s's state to %s in mission %s: %v", stage, state, missionId, err)
 			SetLoggingFile("")
-			log.Warnf("User %s has encountered an error in UpdateStageState: %v", key, err)
 			// an error here is unlikely because all missions are validated before they get saved
 			return "", err // TODO: catch json/schema errors and give helpful response
 		}
@@ -384,13 +373,11 @@ func (a *API) UpdateStageState(key string, missionId string, stage string, state
 		if err != nil {
 			log.Errorf("Error when updating stage %s's state to %s in mission %s: %v", stage, state, missionId, err)
 			SetLoggingFile("")
-			log.Warnf("User %s has encountered an error in UpdateStageState: %v", key, err)
 			return "", err
 		}
 
 		missionBytes = m.Bytes()
 		SetLoggingFile("")
-		log.Infof("Stage %s in user %s's mission %s successfully updated to %s", stage, key, missionId, state)
 
 		return string(missionBytes), err
 	}
@@ -414,6 +401,7 @@ func (a *API) UpdateStageState(key string, missionId string, stage string, state
 		completedList := append(a.CompletedMissions(key), missionId)
 		completedListBytes := strings.Join(completedList, ",")
 		a.db.Set(key, "c", completedListBytes)
+		log.Infof("Mission %s has completed", missionId)
 	}
 	SetLoggingFile("")
 
@@ -456,7 +444,9 @@ func (a *API) SavePlan(key string, plan model.Plan) error {
 		err = a.db.Set(key, "a|"+plan.Name, "")
 	}
 	if err != nil {
+		log.Errorf("Error when saving plan to database: %v", err)
 		SetLoggingFile("")
+		log.Warnf("User %s encountered error when saving plan to database: %v", key, err)
 		return err
 	}
 	log.Infof("Plan '%s' has been saved.", plan.Name)
@@ -488,6 +478,7 @@ Loop:
 		}
 		plans = append(plans, s)
 	}
+	log.Infof("Number of plans found: %v", len(plans))
 	SetLoggingFile("")
 	return plans, err
 }
@@ -528,12 +519,12 @@ func (a *API) initDashboard() {
 		})
 	}
 
-	fmt.Printf("🔭 Mission dashboard is live on http://localhost:%v\n", a.config.Port)
+	log.Infof("🔭 Mission dashboard is live on http://localhost:%v\n", a.config.Port)
 }
 
 func (a *API) Run() {
 	SetLoggingFile("")
-	fmt.Printf("📡 Houston ready to receive calls on http://localhost:%v/api/v1\n", a.config.Port)
+	log.Infof("📡 Houston ready to receive calls on http://localhost:%v/api/v1\n", a.config.Port)
 	err := http.ListenAndServe(":"+a.config.Port, a.router)
 	if err != nil {
 		log.Panic(err)
