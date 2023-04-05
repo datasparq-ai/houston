@@ -119,8 +119,15 @@ func (a *API) CreateKey(key string, name string) (string, error) {
 	err2 := a.db.Set(key, "u", "0") // usage
 	err3 := a.db.Set(key, "c", "")  // completed missions
 
-	if err1 != nil || err2 != nil || err3 != nil {
+	if err1 != nil {
+		log.Error(err1)
 		return "", err1
+	} else if err2 != nil {
+		log.Error(err2)
+		return "", err2
+	} else if err3 != nil {
+		log.Error(err3)
+		return "", err3
 	}
 
 	log.Infof("Created key with ID '%s' and name '%s'", key, name)
