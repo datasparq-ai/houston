@@ -6,24 +6,33 @@ import (
 	"github.com/datasparq-ai/houston/model"
 	"io"
 	"net/http"
+	"os"
+	"strings"
 )
 
 func handleInvalidResponse(err error) error {
-	return fmt.Errorf("response from houston API was wrong format: %v", err)
+	return fmt.Errorf("response from Houston API had wrong format; error when parsing JSON: %v", err)
 }
 
 func handleErrorResponse(responseBody []byte) error {
 	var errorResponse model.Error
-	fmt.Println(string(responseBody))
 	err := json.Unmarshal(responseBody, &errorResponse)
 	if err != nil {
 		return handleInvalidResponse(err)
 	}
 	switch errorResponse.Type {
+	case "model.KeyNotProvidedError":
+		err = &model.KeyNotProvidedError{}
 	case "model.KeyNotFoundError":
 		err = &model.KeyNotFoundError{}
 	case "model.PlanNotFoundError":
-		err = &model.PlanNotFoundError{}
+		// extract plan name from error message
+		if strings.Count(errorResponse.Message, "'") == 2 {
+			planName := errorResponse.Message[strings.Index(errorResponse.Message, "'")+1 : strings.LastIndex(errorResponse.Message, "'")]
+			err = &model.PlanNotFoundError{PlanName: planName}
+		} else {
+			err = &model.PlanNotFoundError{}
+		}
 	default:
 		err = fmt.Errorf(errorResponse.Message)
 	}
@@ -47,4 +56,27 @@ func parseResponse(resp *http.Response, parsedResponse interface{}) error {
 		return handleInvalidResponse(err)
 	}
 	return err
+}
+
+// HandleCommandLineError prints a helpful messages for common errors and then exits.
+// This is only used when Houston is being run from the command line.
+func HandleCommandLineError(err error) {
+
+	errorText := "\u001B[31mError: "
+	end := "\u001B[0m"
+	switch err.(type) {
+	case *model.KeyNotProvidedError:
+		fmt.Println(errorText + err.Error() + " The 'HOUSTON_KEY' environment variable can be used to provide the API key." + end)
+	case *model.KeyNotFoundError:
+		fmt.Println(
+			errorText + err.Error() +
+				" The API key provided with the 'HOUSTON_KEY' environment variable does not exist on this server." +
+				" See the docs for a guide on creating keys: " + end)
+	case *model.PlanNotFoundError:
+		fmt.Println(errorText + err.Error() + end)
+	default:
+		panic(err)
+	}
+
+	os.Exit(1)
 }

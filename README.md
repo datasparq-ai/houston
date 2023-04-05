@@ -85,7 +85,13 @@ go test ./...
 
 Test with Redis database:
 ```bash
+# remove any existing redis database
+rm dump.rdb
+# prevent go from using cached test results
+go clean -testcache
+# create redis db 
 redis-server &
 go test ./...
+# stop redis db
 kill $!
 ```

@@ -4,11 +4,12 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"github.com/datasparq-ai/houston/mission"
-	"github.com/datasparq-ai/houston/model"
 	"math/rand"
 	"net/http"
 	"strings"
+
+	"github.com/datasparq-ai/houston/mission"
+	"github.com/datasparq-ai/houston/model"
 )
 
 // reservedKeys can't be used as mission names

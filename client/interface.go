@@ -10,6 +10,33 @@ import (
 	"time"
 )
 
+// healthCheck checks the health of the Houston API at the address provided and returns an error if the server
+// cannot be reached or if the response is not exactly as expected
+func healthCheck(baseUrl string) error {
+	req, err := http.NewRequest("GET", baseUrl, nil)
+	if err != nil {
+		return err
+	}
+	httpClient := &http.Client{}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("server health check response has status code %v; expected 200", resp.StatusCode)
+	}
+	responseBody, err := io.ReadAll(resp.Body)
+	var healthCheckData model.Success
+	err = json.Unmarshal(responseBody, &healthCheckData)
+	if err != nil {
+		return fmt.Errorf("server health check response is not the expected format")
+	}
+	if healthCheckData.Message != "all systems green" {
+		return fmt.Errorf("server health check response is not the expected message, got: " + healthCheckData.Message)
+	}
+	return nil
+}
+
 func (client *Client) request(method, path string, body []byte) *http.Response {
 	url := client.BaseUrl + path
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(body))
@@ -30,7 +57,6 @@ func (client *Client) request(method, path string, body []byte) *http.Response {
 	if err != nil {
 		panic(err)
 	}
-	//fmt.Println(resp.Status)
 	if resp.StatusCode == http.StatusTooManyRequests {
 		// wait and retry up to 100 times
 		loopCounter := 0
@@ -63,8 +89,12 @@ func (client *Client) delete(path string) *http.Response {
 	return client.request("DELETE", path, []byte{})
 }
 
+// postKey returns a string instead of JSON
 func (client *Client) postKey(reqBody model.Key) (string, error) {
-	reqJSON, _ := json.Marshal(reqBody)
+	reqJSON, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", err
+	}
 	resp := client.post("/key", reqJSON)
 	responseBody, err := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK {
@@ -73,7 +103,7 @@ func (client *Client) postKey(reqBody model.Key) (string, error) {
 		}
 		return "", handleErrorResponse(responseBody)
 	}
-	return string(responseBody), nil
+	return string(responseBody), err
 }
 
 func (client *Client) postMissions(reqBody model.MissionCreateRequest) (model.MissionCreatedResponse, error) {
@@ -95,13 +125,8 @@ func (client *Client) postMissionsStages(mission, stage string, reqBody model.Mi
 }
 
 func (client *Client) postPlans(reqBody []byte) error {
+	var success model.Success
 	resp := client.post("/plans", reqBody)
-	responseBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return handleInvalidResponse(err)
-	}
-	if resp.StatusCode != 200 {
-		return handleErrorResponse(responseBody)
-	}
-	return nil
+	err := parseResponse(resp, &success)
+	return err
 }

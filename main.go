@@ -161,12 +161,9 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 		if p, ok := a.db.Get(key, "p|"+planNameOrPlan); ok {
 			planBytes = []byte(p)
 		} else {
-			errorMessage := fmt.Errorf("no plan found named '%v'", planNameOrPlan)
-			log.Error(errorMessage)
+			log.Error(&model.PlanNotFoundError{PlanName: planNameOrPlan})
 			SetLoggingFile("")
-			log.Warnf("User %s has encountered an error in CreateMissionFromPlan: %v", key, errorMessage)
-			return "", errorMessage
-
+			return "", &model.PlanNotFoundError{PlanName: planNameOrPlan}
 		}
 
 	} else {
@@ -565,7 +562,7 @@ func main() {
 				Use:   "version",
 				Short: "Print the version number",
 				Run: func(c *cobra.Command, args []string) {
-					fmt.Println("v0.1.2")
+					fmt.Println("v0.1.3")
 				},
 			}
 			return
@@ -615,8 +612,8 @@ func main() {
 				Run: func(c *cobra.Command, args []string) {
 					err := client.Save(plan)
 					if err != nil {
-						log.Panic(err)
-						panic(err)
+						log.Error(err)
+						client.HandleCommandLineError(err)
 					}
 				},
 			}
@@ -640,8 +637,8 @@ func main() {
 						strings.Split(strings.Replace(exclude, " ", "", -1), ","),
 						strings.Split(strings.Replace(skip, " ", "", -1), ","))
 					if err != nil {
-						log.Panic(err)
-						panic(err)
+						log.Error(err)
+						client.HandleCommandLineError(err)
 					}
 				},
 			}
@@ -668,6 +665,7 @@ func main() {
 
 		return
 	}().Execute(); err != nil {
-		log.Fatal(err)
+		log.Panic(err)
+		panic(err)
 	}
 }

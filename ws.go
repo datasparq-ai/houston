@@ -2,10 +2,11 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/datasparq-ai/houston/model"
-	"github.com/gorilla/websocket"
 	"net/http"
 	"time"
+
+	"github.com/datasparq-ai/houston/model"
+	"github.com/gorilla/websocket"
 )
 
 type message struct {
@@ -122,7 +123,7 @@ func (a *API) initWebSocket() {
 		}
 
 		if key == "" {
-			payload, _ := json.Marshal(model.Error{Message: "key not provided"})
+			payload, _ := json.Marshal(&model.KeyNotProvidedError{})
 			conn.WriteMessage(websocket.TextMessage, payload)
 			conn.Close()
 			return
@@ -131,7 +132,8 @@ func (a *API) initWebSocket() {
 		// check that key exists
 		_, ok := a.db.Get(key, "u")
 		if !ok {
-			payload, _ := json.Marshal(model.Error{Message: "key not found"})
+
+			payload, _ := json.Marshal(&model.KeyNotFoundError{})
 			conn.WriteMessage(websocket.TextMessage, payload)
 			conn.Close()
 			return
