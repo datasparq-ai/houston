@@ -54,6 +54,10 @@ func SetLoggingFile(key string) {
 		if key == "" {
 			mw := io.MultiWriter(os.Stdout, file)
 			log.SetOutput(mw)
+
+			// Trying to debug runtime error: invalid memory address or nil pointer dereference
+			// log.SetOutput(os.Stdout)
+			// log.SetOutput(file)
 		} else {
 			log.SetOutput(file)
 		}

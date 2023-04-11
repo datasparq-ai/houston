@@ -157,6 +157,7 @@ func (a *API) initWebSocket() {
 // reads from this goroutine.
 func (c *WebSocketClient) readPump() {
 	defer func() {
+		log.Infof("CONNECTION CLOSED - %s\n", c.id)
 		c.hub.unregister <- c
 
 		c.conn.Close()
@@ -173,12 +174,12 @@ func (c *WebSocketClient) readPump() {
 		_, msg, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Error("websocket error: %v", err)
+				log.Infof("error: %v", err)
 			}
 			break
 		}
 
-		//log.Debug("MESSAGE %s - %s\n", c.id, msg)
+		log.Infof("MESSAGE %s - %s\n", c.id, msg)
 
 		c.hub.broadcast <- message{c.key, "notice", msg}
 	}
