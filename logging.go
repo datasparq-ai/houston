@@ -100,6 +100,6 @@ func (a *API) GetLogs(w http.ResponseWriter, r *http.Request) {
 	logs = string(contents)
 
 	payload, _ := json.Marshal(logs)
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "text/plain")
 	w.Write(payload)
 }
