@@ -211,10 +211,10 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 	}
 
 	if strings.ContainsAny(plan.Name, string(disallowedCharacters)) {
-		errorMessage := fmt.Errorf("plan with name '%v' is not allowed because it contains invalid characters", plan.Name)
-		log.Error(errorMessage)
+		err := fmt.Errorf("plan with name '%v' is not allowed because it contains invalid characters", plan.Name)
+		log.Error(err)
 		SetLoggingFile("")
-		return "", errorMessage
+		return "", err
 	}
 
 	// convert plan to mission
@@ -248,11 +248,11 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 				usageInt = usageInt + 1
 				if usageInt > 500 {
 					// this should be impossible because nobody would have this many missions at the same time
-					errorMessage := fmt.Errorf("couldn't create a mission because a new mission ID could not be generated")
-					log.Error(errorMessage)
+					err := fmt.Errorf("couldn't create a mission because a new mission ID could not be generated")
+					log.Error(err)
 					SetLoggingFile("")
 					log.Warnf("User %s has reached the limit of 500 missions", key)
-					return "", errorMessage
+					return "", err
 				}
 				missionId = fmt.Sprintf("m%v", usageInt)
 				if _, exists := a.db.Get(key, missionId); !exists {
@@ -263,26 +263,26 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 		}
 	} else {
 		if strings.ContainsAny(missionId, string(disallowedCharacters)) {
-			errorMessage := fmt.Errorf("mission with id '%v' is not allowed because it contains invalid characters", missionId)
-			log.Error(errorMessage)
+			err := fmt.Errorf("mission with id '%v' is not allowed because it contains invalid characters", missionId)
+			log.Error(err)
 			SetLoggingFile("")
-			return "", errorMessage
+			return "", err
 		}
 		// check for disallowed ids (reserved keys)
 		for _, k := range reservedKeys {
 			if missionId == k {
-				errorMessage := fmt.Errorf("mission with id '%v' is not allowed", missionId)
-				log.Errorf(" %s. Ensure mission does not have an id that is reserved.", errorMessage)
+				err := fmt.Errorf("mission with id '%v' is not allowed", missionId)
+				log.Errorf(" %s. Ensure mission does not have an id that is reserved.", err)
 				SetLoggingFile("")
-				return "", errorMessage
+				return "", err
 			}
 		}
 		// check if mission id already exists
 		if _, exists := a.db.Get(key, missionId); exists {
-			errorMessage := fmt.Errorf("mission with id '%v' already exists", missionId)
-			log.Errorf("%s. Ensure mission does not have the same id as an existing mission.", errorMessage)
+			err := fmt.Errorf("mission with id '%v' already exists", missionId)
+			log.Errorf("%s. Ensure mission does not have the same id as an existing mission.", err)
 			SetLoggingFile("")
-			return "", errorMessage
+			return "", err
 		}
 	}
 	m.Id = missionId
@@ -593,8 +593,6 @@ func (a *API) Run() {
 }
 
 func main() {
-	initLog()
-	SetLoggingFile("")
 	rand.Seed(time.Now().UnixNano()) // change random seed
 	initLog()
 
@@ -607,11 +605,11 @@ func main() {
 			Run: func(c *cobra.Command, args []string) {
 				s := "\u001B[1;38;2;58;145;172m"
 				e := "\u001B[0m"
-				log.Info("\n🚀 \u001B[1mHOUSTON\u001B[0m · Orchestration API · https://callhouston.io\nBasic usage:")
-				log.Infof("  %[1]vhouston api%[2]v                    \u001B[37m# starts a local API server%[2]v\n", s, e)
-				log.Infof("  %[1]vhouston save%[2]v \u001B[1m--plan plan.yaml%[2]v  \u001B[37m# saves a new plan%[2]v\n", s, e)
-				log.Infof("  %[1]vhouston start%[2]v \u001B[1m--plan my-plan%[2]v   \u001B[37m# creates and triggers a new mission%[2]v\n", s, e)
-				log.Infof("  %[1]vhouston help%[2]v                   \u001B[37m# shows help for all commands%[2]v\n", s, e)
+				fmt.Println("\n🚀 \u001B[1mHOUSTON\u001B[0m · Orchestration API · https://callhouston.io\nBasic usage:")
+				fmt.Printf("  %[1]vhouston api%[2]v                    \u001B[37m# starts a local API server%[2]v\n", s, e)
+				fmt.Printf("  %[1]vhouston save%[2]v \u001B[1m--plan plan.yaml%[2]v  \u001B[37m# saves a new plan%[2]v\n", s, e)
+				fmt.Printf("  %[1]vhouston start%[2]v \u001B[1m--plan my-plan%[2]v   \u001B[37m# creates and triggers a new mission%[2]v\n", s, e)
+				fmt.Printf("  %[1]vhouston help%[2]v                   \u001B[37m# shows help for all commands%[2]v\n", s, e)
 				return
 			},
 		}
@@ -621,7 +619,7 @@ func main() {
 				Use:   "version",
 				Short: "Print the version number",
 				Run: func(c *cobra.Command, args []string) {
-					log.Info("v0.2.0")
+					fmt.Println("v0.2.0")
 				},
 			}
 			return
