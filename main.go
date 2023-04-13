@@ -314,11 +314,23 @@ func (a *API) UpdateStageState(key string, missionId string, stage string, state
 
 	// The mission is operated on within a transaction to prevent any other updates while this update is in progress.
 	// If the mission is currently locked then the API will return a 429 error, which causes the client to retry.
-	err := a.db.DoTransaction(txnFunc, key, missionId)
-
-	//if err != missionNotFound? {
-	//  return res, fmt.Errorf("mission with id '%v' not found", missionId)
-	//}
+	// Retry the transaction at least 5 times since it is highly likely that the key will be unlocked within milliseconds.
+	var err error
+	for attempts := 0; attempts < 5; attempts++ {
+		err = a.db.DoTransaction(txnFunc, key, missionId)
+		if err != nil {
+			switch err.(type) {
+			case *model.TransactionFailedError:
+				fmt.Printf("Got 'TransactionFailedError' when ending the stage. This is attempt number %v\n", attempts)
+				time.Sleep(10 * time.Millisecond * time.Duration((attempts+1)^2))
+				// retry the transaction
+			default:
+				break // error will be returned
+			}
+		} else {
+			break
+		}
+	}
 
 	// if update was successful then send the updated mission to all websocket clients
 	if err == nil {
