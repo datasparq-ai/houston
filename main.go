@@ -38,7 +38,7 @@ func New(configPath string) API {
 
 	var db database.Database
 	// attempt to connect to redis - if not found then use local db
-	db = database.NewRedisDatabase(config.Redis.Addr, config.Redis.Password, config.Redis.DB)
+	db = database.NewRedisDatabase(config.Redis.Addr, config.Redis.Password, config.Redis.DB, config.MemoryLimitMiB)
 	err := db.Ping()
 	switch e := err.(type) {
 	case nil:
@@ -395,6 +395,33 @@ Loop:
 	return plans, err
 }
 
+func (a *API) deleteMission(key string, missionId string) {
+
+	missionString, ok := a.db.Get(key, missionId)
+	if !ok {
+		return
+	}
+	var m model.Mission
+	// there is unlikely to be an error here, but if there is just skip removing mission from active list
+	err := json.Unmarshal([]byte(missionString), &m)
+	if err == nil {
+		// remove from active missions
+		activeStr, _ := a.db.Get(key, "a|"+m.Name)
+		activeStr = strings.Replace(","+activeStr+",", ","+missionId+",", "", 1)
+		activeStr = strings.Trim(activeStr, ",")
+		a.db.Set(key, "a|"+m.Name, activeStr)
+	}
+
+	// remove from completed missions
+	completeString, ok := a.db.Get(key, "c")
+	completeString = strings.Replace(","+completeString+",", ","+missionId+",", "", 1)
+	completeString = strings.Trim(completeString, ",")
+	a.db.Set(key, "c", completeString)
+
+	// delete mission
+	a.db.Delete(key, missionId)
+}
+
 // initDashboard starts serving the mission dashboard web app.
 // This should not run if config.Dashboard.Enabled is set to false.
 func (a *API) initDashboard() {
@@ -520,6 +547,7 @@ func main() {
 				Run: func(c *cobra.Command, args []string) {
 					configPath, _ := createCmd.Flags().GetString("config")
 					api := New(configPath)
+					go api.Monitor()
 					api.Run()
 				},
 			}

@@ -142,8 +142,8 @@ func rateLimit(next http.Handler) http.Handler {
 		if !limiter.Allow() {
 			fmt.Println("Client at", strings.Split(r.RemoteAddr, ":")[0], "has made too many requests! Request rate is being limited.")
 
-			var err model.TooManyRequestsError
-			handleError(&err, w)
+			var err *model.TooManyRequestsError
+			handleError(err, w)
 			return
 		}
 

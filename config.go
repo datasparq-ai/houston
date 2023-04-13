@@ -1,14 +1,21 @@
 package main
 
-import "github.com/ilyakaznacheev/cleanenv"
+import (
+	"github.com/ilyakaznacheev/cleanenv"
+	"time"
+)
 
 type Config struct {
-	Port      string          `yaml:"port" env:"HOUSTON_PORT" env-default:"8000"`
-	Redis     RedisConfig     `yaml:"redis"`
-	Password  string          `yaml:"password" env:"HOUSTON_PASSWORD"`
-	Dashboard DashboardConfig `yaml:"dashboard"`
-	TLS       TLSConfig       `yaml:"tls"`
-	Salt      string          // note: it is not recommended to set the salt yourself. It will be randomly generated
+	Port          string          `yaml:"port" env:"HOUSTON_PORT" env-default:"8000"`
+	Redis         RedisConfig     `yaml:"redis"`
+	Password      string          `yaml:"password" env:"HOUSTON_PASSWORD"`
+	Dashboard     DashboardConfig `yaml:"dashboard"`
+	TLS           TLSConfig       `yaml:"tls"`
+	MissionExpiry time.Duration   `yaml:"mission_expiry" env:"HOUSTON_MISSION_EXPIRY" env-default:"720h"` // 30 days
+	//MissionExpiry  time.Duration   `yaml:"mission_expiry" env:"HOUSTON_MISSION_EXPIRY" env-default:"1s"`
+	MemoryLimitMiB int64 `yaml:"memory_limit_mib" env:"HOUSTON_MEMORY_LIMIT_MIB" env-default:"1024"`
+	//MemoryLimitMiB int64           `yaml:"memory_limit_mib" env:"HOUSTON_MEMORY_LIMIT_MIB" env-default:"0"`
+	Salt string // note: it is not recommended to set the salt yourself. It will be randomly generated
 }
 
 type DashboardConfig struct {
