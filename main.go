@@ -593,8 +593,6 @@ func (a *API) Run() {
 }
 
 func main() {
-	initLog()
-	SetLoggingFile("")
 	rand.Seed(time.Now().UnixNano()) // change random seed
 	initLog()
 
