@@ -12,6 +12,7 @@ import (
 	// "golang.org/x/term"
 )
 
+var dateLayout = "20060102"
 var log *logrus.Logger
 
 func initLog() {
@@ -39,8 +40,7 @@ func initLog() {
 // provided then logs go to the main logging file, which is only accessible by the admin.
 func SetLoggingFile(key string) {
 
-	dt := time.Now()
-	day := dt.Format("01022006")
+	day := time.Now().Format(dateLayout)
 
 	var logFileName string
 	if key == "" {
@@ -74,7 +74,7 @@ func SetLoggingFile(key string) {
 // @ID get-logs
 // @Tags Logs
 // @Param x-access-key header string true "Houston Key"
-// @Param logDate path string true "Date of logs required in format MMDDYYYY"
+// @Param logDate path string true "Date of logs required in format YYYYMMDD"
 // @Success 200 {object} ???
 // @Failure 404,500 {object} model.Error
 // @Router /api/v1/logs [get]
@@ -85,8 +85,7 @@ func (a *API) GetLogs(w http.ResponseWriter, r *http.Request) {
 	var requiredLogDate string
 
 	if logDate == "" {
-		dtToday := time.Now()
-		today := dtToday.Format("01022006")
+		today := time.Now().Format(dateLayout)
 		requiredLogDate = today
 	} else {
 		requiredLogDate = logDate

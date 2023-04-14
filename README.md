@@ -3,7 +3,7 @@
 
 Houston is an open source, API based workflow orchestration tool.
 
-Documentation [./docs](./docs/README.md)
+Documentation [./docs](./docs/README.md)  
 Homepage: [callhouston.io](https://callhouston.io)
 
 This repo contains the API server, go client, and CLI.
