@@ -313,15 +313,16 @@ func (a *API) UpdateStageState(key string, missionId string, stage string, state
 	}
 
 	// The mission is operated on within a transaction to prevent any other updates while this update is in progress.
-	// If the mission is currently locked then the API will return a 429 error, which causes the client to retry.
-	// Retry the transaction at least 5 times since it is highly likely that the key will be unlocked within milliseconds.
+	// Retry the transaction at least 10 times: it is highly likely that the key will be unlocked within milliseconds,
+	// but any more than 10 risks creating issues for the client as the request will take a minimum of 3.850s
+	// If the key is still locked after 10 attempts then the API will return 429, which causes the client to retry.
 	var err error
-	for attempts := 0; attempts < 5; attempts++ {
+	for attempts := 0; attempts < 10; attempts++ {
 		err = a.db.DoTransaction(txnFunc, key, missionId)
 		if err != nil {
 			switch err.(type) {
 			case *model.TransactionFailedError:
-				fmt.Printf("Got 'TransactionFailedError' when ending the stage. This is attempt number %v\n", attempts)
+				fmt.Printf("Got 'TransactionFailedError' when ending the stage. This is attempt number %v.\n", attempts+1)
 				time.Sleep(10 * time.Millisecond * time.Duration((attempts+1)^2))
 				// retry the transaction
 			default:
