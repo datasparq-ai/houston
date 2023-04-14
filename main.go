@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	//"log"
 	"math/rand"
 	"net"
 	"net/http"
@@ -21,6 +20,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/acme/autocert"
+	// "golang.org/x/term"
 )
 
 type API struct {
