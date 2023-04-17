@@ -46,12 +46,18 @@ func New(configPath string) API {
 	err := db.Ping()
 	switch e := err.(type) {
 	case nil:
-		log.Infof("🚨 Connected to Redis Database at %v\n", config.Redis.Addr)
+		log.Infof("Connected to Redis Database at %v\n", config.Redis.Addr)
+		if isTerminal {
+			fmt.Printf("🚨 Connected to Redis Database at %v\n", config.Redis.Addr)
+		}
 	case *net.OpError:
 		switch e.Err.(type) {
 		case *os.SyscallError:
 			// TODO: fail in production mode (and unittest mode)
 			log.Warnf("⚠️ Couldn't connect to Redis Database at %v. Using in-memory database.\n", config.Redis.Addr)
+			if isTerminal {
+				fmt.Printf("⚠️ Couldn't connect to Redis Database at %v. Using in-memory database.\n", config.Redis.Addr)
+			}
 			db = database.NewLocalDatabase()
 		case *net.AddrError:
 			log.Fatal("Do not add protocol to Redis.Addr")
@@ -107,18 +113,21 @@ func New(configPath string) API {
 
 func (a *API) SetPassword(password string) error {
 	SetLoggingFile("")
+	log.Info("Attempt made to set new password")
 
 	if len(password) < 10 {
-		return fmt.Errorf("Password provided is not long enough. Houston admin password must be at least 10 characters. Recommended length is 30.")
+		log.Error("Failed to set new password")
+		return fmt.Errorf("password provided is not long enough. Houston admin password must be at least 10 characters. Recommended length is 30")
 	}
 	if strings.ContainsAny(password, "\\ \t\n") {
-		return fmt.Errorf("Password provided contains invalid characters. Must not contain backslash, space, tab, or newline.")
+		log.Error("Failed to set new password")
+		return fmt.Errorf("password provided contains invalid characters. Must not contain backslash, space, tab, or newline")
 	}
 	// Every API instance gets a unique random salt. See: https://stackoverflow.com/a/1645190
 	// Salt changes if the password is changed
 	a.config.Salt = createRandomString(10)
 	a.config.Password = hashPassword(password, a.config.Salt)
-	log.Infof("New password has been set")
+	log.Info("New password has been set")
 	return nil
 }
 
@@ -540,9 +549,15 @@ func (a *API) initDashboard() {
 	}
 
 	if a.protocol == "https" {
-		log.Infof("🔭 Mission dashboard is live on https://%v\n", a.config.TLS.Host)
+		log.Infof("Mission dashboard is live on https://%v\n", a.config.TLS.Host)
+		if isTerminal {
+			fmt.Printf("🔭 Mission dashboard is live on https://%v\n", a.config.TLS.Host)
+		}
 	} else {
-		log.Infof("🔭 Mission dashboard is live on http://localhost:%v\n", a.config.Port)
+		log.Infof("Mission dashboard is live on http://localhost:%v\n", a.config.Port)
+		if isTerminal {
+			fmt.Printf("🔭 Mission dashboard is live on https://localhost:%v\n", a.config.Port)
+		}
 	}
 }
 
@@ -552,7 +567,10 @@ func (a *API) Run() {
 	var err error
 	if a.protocol == "https" {
 
-		log.Infof("📡 Houston ready to receive calls on https://%v/api/v1\n", a.config.TLS.Host)
+		log.Infof("Houston ready to receive calls on https://%v/api/v1\n", a.config.TLS.Host)
+		if isTerminal {
+			fmt.Printf("📡 Houston ready to receive calls on https://%v/api/v1\n", a.config.TLS.Host)
+		}
 
 		if a.config.TLS.Auto {
 			// use the ACME protocol to generate and renew certificates automatically
@@ -582,7 +600,10 @@ func (a *API) Run() {
 			err = http.ListenAndServeTLS(":https", a.config.TLS.CertFile, a.config.TLS.KeyFile, a.router)
 		}
 	} else {
-		log.Infof("📡 Houston ready to receive calls on http://localhost:%v/api/v1\n", a.config.Port)
+		log.Infof("Houston ready to receive calls on http://localhost:%v/api/v1\n", a.config.Port)
+		if isTerminal {
+			fmt.Printf("📡 Houston ready to receive calls on http://localhost:%v/api/v1\n", a.config.Port)
+		}
 		err = http.ListenAndServe(":"+a.config.Port, a.router)
 	}
 
