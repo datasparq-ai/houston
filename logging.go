@@ -9,13 +9,17 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
-	// "golang.org/x/term"
+	"golang.org/x/term"
 )
 
 var dateLayout = "20060102"
 var log *logrus.Logger
+var isTerminal bool
 
 func initLog() {
+	if term.IsTerminal(int(os.Stdout.Fd())) {
+		isTerminal = true
+	}
 	log = logrus.New()
 	log.SetFormatter(&logrus.JSONFormatter{})
 	log.SetLevel(logrus.DebugLevel)
@@ -53,12 +57,13 @@ func SetLoggingFile(key string) {
 
 	if err == nil {
 		if key == "" {
-			mw := io.MultiWriter(os.Stdout, file)
-			log.SetOutput(mw)
-
-			// Trying to debug runtime error: invalid memory address or nil pointer dereference
-			// log.SetOutput(os.Stdout)
-			// log.SetOutput(file)
+			// If in interactive terminal, stdout should only be used for print statements and logs only written to file
+			if isTerminal {
+				log.SetOutput(file)
+			} else {
+				mw := io.MultiWriter(os.Stdout, file)
+				log.SetOutput(mw)
+			}
 		} else {
 			log.SetOutput(file)
 		}
