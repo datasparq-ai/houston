@@ -613,9 +613,12 @@ func (a *API) Run() {
 
 }
 
-func main() {
+func init() {
 	rand.Seed(time.Now().UnixNano()) // change random seed
 	initLog()
+}
+
+func main() {
 
 	if err := func() (rootCmd *cobra.Command) {
 

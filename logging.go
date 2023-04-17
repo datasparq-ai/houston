@@ -2,12 +2,14 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/term"
 )
@@ -79,28 +81,41 @@ func SetLoggingFile(key string) {
 // @ID get-logs
 // @Tags Logs
 // @Param x-access-key header string true "Houston Key"
-// @Param logDate path string true "Date of logs required in format YYYYMMDD"
-// @Success 200 {object} ???
+// @Param date query string false "Date of logs required in format YYYYMMDD"
+// @Success 200 {string} string
 // @Failure 404,500 {object} model.Error
 // @Router /api/v1/logs [get]
 func (a *API) GetLogs(w http.ResponseWriter, r *http.Request) {
-	key := r.Header.Get("x-access-key") // key has been checked by checkKey middleware
-	vars := mux.Vars(r)
-	logDate := vars["logDate"]
-	var requiredLogDate string
+	fmt.Println("GetLogs")
 
+	key := r.Header.Get("x-access-key") // key has been checked by checkKey middleware
+	logDate := r.URL.Query().Get("date")
+
+	fmt.Println("LogDate = ", logDate)
 	if logDate == "" {
 		today := time.Now().Format(dateLayout)
-		requiredLogDate = today
-	} else {
-		requiredLogDate = logDate
+		logDate = today
+	}
+	// check that date is valid: look for invalid characters and check length
+	if strings.IndexAny(logDate, "\\/~.-_:; ") > -1 || len(logDate) != 8 {
+		err := fmt.Errorf("invalid log query: '%v' is not a valid date; dates must use YYYYMMDD format", logDate)
+		handleError(err, w)
+		return
 	}
 
-	var logFileName string
-	logFileName = "logs/key_" + key + "_" + requiredLogDate + "_log.txt"
+	logFileName := "logs/key_" + key + "_" + logDate + "_log.txt"
 	contents, err := os.ReadFile(logFileName)
+
 	if err != nil {
-		handleError(err, w)
+		switch err.(type) {
+		case *fs.PathError:
+			// if so file exists for the key and date then return code 404 and no data
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte{})
+		default:
+			handleError(err, w)
+		}
+		return
 	}
 	var logs string
 	logs = string(contents)
