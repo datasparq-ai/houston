@@ -313,11 +313,11 @@ func (a *API) UpdateStageState(key string, missionId string, stage string, state
 	}
 
 	// The mission is operated on within a transaction to prevent any other updates while this update is in progress.
-	// Retry the transaction at least 10 times: it is highly likely that the key will be unlocked within milliseconds,
-	// but any more than 10 risks creating issues for the client as the request will take a minimum of 3.850s
-	// If the key is still locked after 10 attempts then the API will return 429, which causes the client to retry.
+	// Retry the transaction at least 3 times: it is highly likely that the key will be unlocked within milliseconds,
+	// but any more than 10 risks creating issues for the client as the request will take a minimum of 140ms
+	// If the key is still locked after 3 attempts then the API will return 429, which causes the client to retry.
 	var err error
-	for attempts := 0; attempts < 10; attempts++ {
+	for attempts := 0; attempts < 3; attempts++ {
 		err = a.db.DoTransaction(txnFunc, key, missionId)
 		if err != nil {
 			switch err.(type) {

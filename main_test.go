@@ -13,6 +13,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestMain(m *testing.M) {
@@ -126,9 +127,13 @@ func TestAPI_PostMissionStage(t *testing.T) {
 		t.Fatalf(`Didn't get an error when starting stage twice`)
 	}
 
+	start := time.Now()
 	_, err = c.FinishStage(missionId, "stage-1", false)
 	if err != nil {
 		t.Fatalf(`Could not finish stage`)
+	}
+	if td := time.Since(start); td > time.Millisecond*5 {
+		t.Fatalf("Finishing a stage took too long at %v", td)
 	}
 }
 
