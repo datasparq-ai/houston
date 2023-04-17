@@ -4,14 +4,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/datasparq-ai/houston/client"
-	"github.com/datasparq-ai/houston/database"
-	"github.com/datasparq-ai/houston/mission"
-	"github.com/datasparq-ai/houston/model"
-	"github.com/gorilla/mux"
-	"github.com/spf13/cobra"
-	"golang.org/x/crypto/acme/autocert"
-	"log"
+
 	"math/rand"
 	"net"
 	"net/http"
@@ -19,6 +12,15 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/datasparq-ai/houston/client"
+	"github.com/datasparq-ai/houston/database"
+	"github.com/datasparq-ai/houston/mission"
+	"github.com/datasparq-ai/houston/model"
+	"github.com/gorilla/mux"
+	"github.com/spf13/cobra"
+	"golang.org/x/crypto/acme/autocert"
+	// "golang.org/x/term"
 )
 
 type API struct {
@@ -33,8 +35,10 @@ type API struct {
 // It will create or connect to a database depending on the settings in the config file.
 // local db will only persist while program is running.
 func New(configPath string) API {
-
+	SetLoggingFile("")
+	log.Debugf("Loading configuration from %s", configPath)
 	config := LoadConfig(configPath)
+	log.Debug("Configuration Loaded")
 
 	var db database.Database
 	// attempt to connect to redis - if not found then use local db
@@ -42,19 +46,29 @@ func New(configPath string) API {
 	err := db.Ping()
 	switch e := err.(type) {
 	case nil:
-		fmt.Printf("🚨 Connected to Redis Database at %v\n", config.Redis.Addr)
+		log.Infof("Connected to Redis Database at %v\n", config.Redis.Addr)
+		if isTerminal {
+			fmt.Printf("🚨 Connected to Redis Database at %v\n", config.Redis.Addr)
+		}
 	case *net.OpError:
 		switch e.Err.(type) {
 		case *os.SyscallError:
 			// TODO: fail in production mode (and unittest mode)
-			fmt.Printf("Couldn't connect to Redis Database at %v. Using in-memory database.\n", config.Redis.Addr)
+			log.Warnf("⚠️ Couldn't connect to Redis Database at %v. Using in-memory database.\n", config.Redis.Addr)
+			if isTerminal {
+				fmt.Printf("⚠️ Couldn't connect to Redis Database at %v. Using in-memory database.\n", config.Redis.Addr)
+			}
 			db = database.NewLocalDatabase()
 		case *net.AddrError:
+			log.Fatal("Do not add protocol to Redis.Addr")
+			log.Panic(err)
 			panic(err) // this happens when user puts protocol in Redis.Addr
 		default:
+			log.Panic(err)
 			panic(err)
 		}
 	default:
+		log.Panic(err)
 		panic(err)
 	}
 
@@ -73,6 +87,8 @@ func New(configPath string) API {
 
 	a := API{db, nil, nil, config, protocol}
 
+	log.Debug("API Instance Created")
+
 	config.Password = strings.Trim(config.Password, " \n\t")
 	if config.Password != "" {
 		err := a.SetPassword(config.Password)
@@ -87,31 +103,42 @@ func New(configPath string) API {
 	}
 
 	a.initRouter()
+	log.Debug("Router initialised")
 	a.initDashboard()
+	log.Debug("Dashboard initialsied")
 	a.initWebSocket()
+	log.Debug("Websocket initialised")
 	return a
 }
 
 func (a *API) SetPassword(password string) error {
+	SetLoggingFile("")
+	log.Info("Attempt made to set new password")
+
 	if len(password) < 10 {
-		return fmt.Errorf("Password provided is not long enough. Houston admin password must be at least 10 characters. Recommended length is 30.")
+		log.Error("Failed to set new password")
+		return fmt.Errorf("password provided is not long enough. Houston admin password must be at least 10 characters. Recommended length is 30")
 	}
 	if strings.ContainsAny(password, "\\ \t\n") {
-		return fmt.Errorf("Password provided contains invalid characters. Must not contain backslash, space, tab, or newline.")
+		log.Error("Failed to set new password")
+		return fmt.Errorf("password provided contains invalid characters. Must not contain backslash, space, tab, or newline")
 	}
 	// Every API instance gets a unique random salt. See: https://stackoverflow.com/a/1645190
 	// Salt changes if the password is changed
 	a.config.Salt = createRandomString(10)
 	a.config.Password = hashPassword(password, a.config.Salt)
+	log.Info("New password has been set")
 	return nil
 }
 
 // CreateKey initialises a new key/project. This is a different concept to Redis keys.
 func (a *API) CreateKey(key string, name string) (string, error) {
+	SetLoggingFile("")
 
 	// if key is not provided then create random key of length 40
 	if key == "" {
 		key = createRandomString(40)
+		log.Debug("Random key has been generated")
 	}
 
 	err := a.db.CreateKey(key)
@@ -123,22 +150,39 @@ func (a *API) CreateKey(key string, name string) (string, error) {
 	err2 := a.db.Set(key, "u", "0") // usage
 	err3 := a.db.Set(key, "c", "")  // completed missions
 
-	if err1 != nil || err2 != nil || err3 != nil {
+	if err1 != nil {
+		log.Error(err1)
 		return "", err1
+	} else if err2 != nil {
+		log.Error(err2)
+		return "", err2
+	} else if err3 != nil {
+		log.Error(err3)
+		return "", err3
 	}
+
+	log.Infof("Created key with ID '%s' and name '%s'", key, name)
+	SetLoggingFile(key)
+	log.Infof("Created key with ID '%s' and name '%s'", key, name)
+	SetLoggingFile("")
 
 	return key, nil
 }
 
 func (a *API) deleteKey(key string) error {
+	SetLoggingFile(key)
 	err := a.db.DeleteKey(key)
+	if err == nil {
+		log.Infof("Deleted key with name '%s'", key)
+	} else {
+		log.Errorf("Key deletion failed: %s", err)
+	}
+	SetLoggingFile("")
 	return err
 }
 
 // CreateMissionFromPlan creates new mission from an existing saved plan (given the name)
-//
-//	or an unsaved plan (given entire plan as json). Does the following:
-//
+// or an unsaved plan (given entire plan as json). Does the following:
 // - parse plan or get from db if name provided
 // - validate DAG
 // - assign mission ID if one is not provided
@@ -149,11 +193,14 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 
 	var planBytes []byte
 
+	SetLoggingFile(key)
 	// if plan name is provided then load plan
 	if !strings.Contains(planNameOrPlan, "{") {
 		if p, ok := a.db.Get(key, "p|"+planNameOrPlan); ok {
 			planBytes = []byte(p)
 		} else {
+			log.Error(&model.PlanNotFoundError{PlanName: planNameOrPlan})
+			SetLoggingFile("")
 			return "", &model.PlanNotFoundError{PlanName: planNameOrPlan}
 		}
 
@@ -167,26 +214,37 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 	var plan model.Plan
 	err := json.Unmarshal(planBytes, &plan) // this will catch any invalid params, services, etc.
 	if err != nil {
+		log.Errorf("JSON/Schema Error: %s", err)
+		SetLoggingFile("")
 		return "", err // TODO: catch json/schema errors and give helpful response
 	}
 
 	if strings.ContainsAny(plan.Name, string(disallowedCharacters)) {
-		return "", fmt.Errorf("plan with name '%v' is not allowed because it contains invalid characters", plan.Name)
+		err := fmt.Errorf("plan with name '%v' is not allowed because it contains invalid characters", plan.Name)
+		log.Error(err)
+		SetLoggingFile("")
+		return "", err
 	}
 
 	// convert plan to mission
 	m := NewMissionFromPlan(&plan)
+	log.Infof("Converted Plan to Mission")
 
 	// validate graph
 	validationError := m.Validate()
 	if validationError != nil {
+		log.Errorf("Graph validation failed: %s", validationError)
+		SetLoggingFile("")
 		return "", validationError
+	} else {
+		log.Infof("Validated Mission Graph")
 	}
 
 	if missionId == "" {
 		// if no id is provided, use the key's usage count
 		usage, _ := a.db.Get(key, "u")
 		missionId = "m" + usage
+		log.Debugf("MissionID not provided. ID used instead: %s", missionId)
 
 		// check if mission id already exists
 		if _, exists := a.db.Get(key, missionId); exists {
@@ -199,7 +257,11 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 				usageInt = usageInt + 1
 				if usageInt > 500 {
 					// this should be impossible because nobody would have this many missions at the same time
-					return "", fmt.Errorf("couldn't create a mission because a new mission ID could not be generated")
+					err := fmt.Errorf("couldn't create a mission because a new mission ID could not be generated")
+					log.Error(err)
+					SetLoggingFile("")
+					log.Warnf("User %s has reached the limit of 500 missions", key)
+					return "", err
 				}
 				missionId = fmt.Sprintf("m%v", usageInt)
 				if _, exists := a.db.Get(key, missionId); !exists {
@@ -210,17 +272,26 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 		}
 	} else {
 		if strings.ContainsAny(missionId, string(disallowedCharacters)) {
-			return "", fmt.Errorf("mission with id '%v' is not allowed because it contains invalid characters", missionId)
+			err := fmt.Errorf("mission with id '%v' is not allowed because it contains invalid characters", missionId)
+			log.Error(err)
+			SetLoggingFile("")
+			return "", err
 		}
 		// check for disallowed ids (reserved keys)
 		for _, k := range reservedKeys {
 			if missionId == k {
-				return "", fmt.Errorf("mission with id '%v' is not allowed", missionId)
+				err := fmt.Errorf("mission with id '%v' is not allowed", missionId)
+				log.Errorf(" %s. Ensure mission does not have an id that is reserved.", err)
+				SetLoggingFile("")
+				return "", err
 			}
 		}
 		// check if mission id already exists
 		if _, exists := a.db.Get(key, missionId); exists {
-			return "", fmt.Errorf("mission with id '%v' already exists", missionId)
+			err := fmt.Errorf("mission with id '%v' already exists", missionId)
+			log.Errorf("%s. Ensure mission does not have the same id as an existing mission.", err)
+			SetLoggingFile("")
+			return "", err
 		}
 	}
 	m.Id = missionId
@@ -236,20 +307,31 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 	activeMissions += m.Id
 	err1 := a.db.Set(key, "a|"+m.Name, activeMissions)
 	if err1 != nil {
+		log.Error(err1)
+		SetLoggingFile("")
+		log.Warnf("User %s has encountered an error in CreateMissionFromPlan when updating database: %v", key, err1)
 		return m.Id, err1 // TODO: how to recover from this err?
 	}
 
 	a.ws <- message{key, "missionCreation", m.Bytes()}
+
+	log.Infof("Mission with id '%v' has been successfully created", missionId)
+	SetLoggingFile("")
 
 	return m.Id, nil
 }
 
 // ActiveMissions finds all missions for a plan. If plan doesn't exist then an empty list is returned.
 func (a *API) ActiveMissions(key string, plan string) []string {
+	SetLoggingFile(key)
 	missions, _ := a.db.Get(key, "a|"+plan)
 	if missions == "" {
+		log.Debugf("No missions found")
+		SetLoggingFile("")
 		return []string{}
 	}
+	log.Infof("Missions returned: %s", missions)
+	SetLoggingFile("")
 	return strings.Split(missions, ",")
 }
 
@@ -259,8 +341,11 @@ func (a *API) ActiveMissions(key string, plan string) []string {
 // efficient than using ActiveMissions.
 func (a *API) AllActiveMissions(key string) ([]string, error) {
 	var missions []string
+	SetLoggingFile(key)
 	allKeys, err := a.db.List(key, "")
 	if err != nil {
+		log.Errorf("Error when getting all active missions: %v", err)
+		SetLoggingFile("")
 		return missions, err
 	}
 	for _, s := range allKeys {
@@ -269,6 +354,10 @@ func (a *API) AllActiveMissions(key string) ([]string, error) {
 		}
 		missions = append(missions, s)
 	}
+	log.Infof("All active missions found in the API database attributed to key %s", key)
+	log.Debug("Inactive and archived missions are not stored in the API database")
+	SetLoggingFile("")
+
 	return missions, err
 }
 
@@ -279,11 +368,14 @@ func (a *API) UpdateStageState(key string, missionId string, stage string, state
 	var res mission.Response
 	var missionBytes []byte
 
+	SetLoggingFile(key)
 	// define a function to perform on a mission within a transaction
 	txnFunc := func(missionString string) (string, error) {
 
 		m, err := mission.NewFromJSON([]byte(missionString))
 		if err != nil {
+			log.Errorf("Error when updating stage %s's state to %s in mission %s: %v", stage, state, missionId, err)
+			SetLoggingFile("")
 			// an error here is unlikely because all missions are validated before they get saved
 			return "", err // TODO: catch json/schema errors and give helpful response
 		}
@@ -291,23 +383,31 @@ func (a *API) UpdateStageState(key string, missionId string, stage string, state
 		switch state {
 		case "started":
 			res, err = m.StartStage(stage, ignoreDependencies)
+			log.Infof("Stage %s in mission %s has started", stage, missionId)
 		case "finished":
 			res, err = m.FinishStage(stage, ignoreDependencies)
+			log.Infof("Stage %s in mission %s has finished", stage, missionId)
 		case "skipped":
 			res, err = m.SkipStage(stage)
+			log.Warnf("Stage %s in mission %s was skipped", stage, missionId)
 		case "failed":
 			res, err = m.FailStage(stage)
+			log.Errorf("Stage %s in mission %s failed", stage, missionId)
 		case "excluded", "ignored":
 			res, err = m.ExcludeStage(stage)
+			log.Warnf("Stage %s in mission %s was ignored", stage, missionId)
 		default:
 			err = fmt.Errorf("invalid stage state '%v'; choose one of started, finished, failed, skipped, or excluded", state)
 		}
 
 		if err != nil {
+			log.Errorf("Error when updating stage %s's state to %s in mission %s: %v", stage, state, missionId, err)
+			SetLoggingFile("")
 			return "", err
 		}
 
 		missionBytes = m.Bytes()
+		SetLoggingFile("")
 
 		return string(missionBytes), err
 	}
@@ -344,33 +444,42 @@ func (a *API) UpdateStageState(key string, missionId string, stage string, state
 		completedList := append(a.CompletedMissions(key), missionId)
 		completedListBytes := strings.Join(completedList, ",")
 		a.db.Set(key, "c", completedListBytes)
+		log.Infof("Mission %s has completed", missionId)
 	}
+	SetLoggingFile("")
 
 	return res, err
 }
 
 // CompletedMissions returns a list all missionIds that are completed so that they can be archived and deleted.
 func (a *API) CompletedMissions(key string) []string {
+	SetLoggingFile(key)
 	completedListString, ok := a.db.Get(key, "c")
 	if !ok || completedListString == "" { // this should never happen
+		SetLoggingFile("")
 		return []string{}
 	}
 	completedList := strings.Split(completedListString, ",")
+	log.Infof("Got list of completed missions attributed to key '%s'", key)
+	SetLoggingFile("")
+
 	return completedList
 }
 
 // SavePlan stores a new plan in the database if that plan is valid. Current behaviour is to overwrite existing plans.
 func (a *API) SavePlan(key string, plan model.Plan) error {
+	SetLoggingFile(key)
 
 	// convert plan to mission for validation of graph only
 	m := NewMissionFromPlan(&plan)
 	err := m.Validate()
 	if err != nil {
+		SetLoggingFile("")
 		return err
 	}
 
 	planBytes, _ := json.Marshal(plan)
-
+	log.Infof("Converted Plan '%s' to Mission", plan.Name)
 	p, _ := a.db.Get(key, "p|"+plan.Name)
 	err = a.db.Set(key, "p|"+plan.Name, string(planBytes))
 	// if plan already exists, do not re-create the 'active' key
@@ -378,9 +487,14 @@ func (a *API) SavePlan(key string, plan model.Plan) error {
 		err = a.db.Set(key, "a|"+plan.Name, "")
 	}
 	if err != nil {
+		log.Errorf("Error when saving plan to database: %v", err)
+		SetLoggingFile("")
+		log.Warnf("User %s encountered error when saving plan to database: %v", key, err)
 		return err
 	}
+	log.Infof("Plan '%s' has been saved.", plan.Name)
 	a.ws <- message{key, "planCreation", planBytes}
+	SetLoggingFile("")
 	return nil
 }
 
@@ -388,6 +502,8 @@ func (a *API) SavePlan(key string, plan model.Plan) error {
 // The complete list of plans is the union of all saved plans and all active plans
 func (a *API) ListPlans(key string) ([]string, error) {
 
+	SetLoggingFile(key)
+	log.Infof("Listing plans attributed with key '%s'", key)
 	plans, err := a.db.List(key, "p")
 	for i, s := range plans {
 		plans[i] = strings.Replace(s, "p|", "", 1)
@@ -405,6 +521,8 @@ Loop:
 		}
 		plans = append(plans, s)
 	}
+	log.Infof("Number of plans found: %v", len(plans))
+	SetLoggingFile("")
 	return plans, err
 }
 
@@ -413,6 +531,7 @@ Loop:
 func (a *API) initDashboard() {
 	var html []byte
 	var err error
+	SetLoggingFile("")
 	if a.config.Dashboard.Enabled {
 		// serve the houston console
 		a.router.HandleFunc("/console", func(w http.ResponseWriter, r *http.Request) {
@@ -432,6 +551,7 @@ func (a *API) initDashboard() {
 		} else {
 			html, err = os.ReadFile(a.config.Dashboard.Src)
 			if err != nil {
+				log.Panic(err)
 				panic(err)
 			}
 		}
@@ -442,9 +562,15 @@ func (a *API) initDashboard() {
 	}
 
 	if a.protocol == "https" {
-		fmt.Printf("🔭 Mission dashboard is live on https://%v\n", a.config.TLS.Host)
+		log.Infof("Mission dashboard is live on https://%v\n", a.config.TLS.Host)
+		if isTerminal {
+			fmt.Printf("🔭 Mission dashboard is live on https://%v\n", a.config.TLS.Host)
+		}
 	} else {
-		fmt.Printf("🔭 Mission dashboard is live on http://localhost:%v\n", a.config.Port)
+		log.Infof("Mission dashboard is live on http://localhost:%v\n", a.config.Port)
+		if isTerminal {
+			fmt.Printf("🔭 Mission dashboard is live on https://localhost:%v\n", a.config.Port)
+		}
 	}
 }
 
@@ -454,11 +580,14 @@ func (a *API) Run() {
 	var err error
 	if a.protocol == "https" {
 
-		fmt.Printf("📡 Houston ready to receive calls on https://%v/api/v1\n", a.config.TLS.Host)
+		log.Infof("Houston ready to receive calls on https://%v/api/v1\n", a.config.TLS.Host)
+		if isTerminal {
+			fmt.Printf("📡 Houston ready to receive calls on https://%v/api/v1\n", a.config.TLS.Host)
+		}
 
 		if a.config.TLS.Auto {
 			// use the ACME protocol to generate and renew certificates automatically
-			fmt.Printf("Automatic TLS is enabled. Houston will attempt to generate a certificate for %s.\n", a.config.TLS.Host)
+			log.Infof("Automatic TLS is enabled. Houston will attempt to generate a certificate for %s.\n", a.config.TLS.Host)
 
 			certManager := autocert.Manager{
 				Prompt:     autocert.AcceptTOS,
@@ -484,7 +613,10 @@ func (a *API) Run() {
 			err = http.ListenAndServeTLS(":https", a.config.TLS.CertFile, a.config.TLS.KeyFile, a.router)
 		}
 	} else {
-		fmt.Printf("📡 Houston ready to receive calls on http://localhost:%v/api/v1\n", a.config.Port)
+		log.Infof("Houston ready to receive calls on http://localhost:%v/api/v1\n", a.config.Port)
+		if isTerminal {
+			fmt.Printf("📡 Houston ready to receive calls on http://localhost:%v/api/v1\n", a.config.Port)
+		}
 		err = http.ListenAndServe(":"+a.config.Port, a.router)
 	}
 
@@ -494,8 +626,12 @@ func (a *API) Run() {
 
 }
 
-func main() {
+func init() {
 	rand.Seed(time.Now().UnixNano()) // change random seed
+	initLog()
+}
+
+func main() {
 
 	if err := func() (rootCmd *cobra.Command) {
 
@@ -550,6 +686,7 @@ func main() {
 				Run: func(c *cobra.Command, args []string) {
 					err := client.CreateKey(id, name, password)
 					if err != nil {
+						log.Panic(err)
 						panic(err)
 					}
 				},
@@ -569,6 +706,7 @@ func main() {
 				Run: func(c *cobra.Command, args []string) {
 					err := client.Save(plan)
 					if err != nil {
+						log.Error(err)
 						client.HandleCommandLineError(err)
 					}
 				},
@@ -593,6 +731,7 @@ func main() {
 						strings.Split(strings.Replace(exclude, " ", "", -1), ","),
 						strings.Split(strings.Replace(skip, " ", "", -1), ","))
 					if err != nil {
+						log.Error(err)
 						client.HandleCommandLineError(err)
 					}
 				},
@@ -620,6 +759,7 @@ func main() {
 
 		return
 	}().Execute(); err != nil {
+		log.Panic(err)
 		panic(err)
 	}
 }

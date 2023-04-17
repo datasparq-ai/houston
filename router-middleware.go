@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/datasparq-ai/houston/model"
-	"golang.org/x/time/rate"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/datasparq-ai/houston/model"
+	"golang.org/x/time/rate"
 )
 
 // checkKey runs before requests that require a key to check that the key exists in the API database
@@ -27,7 +28,6 @@ func (a *API) checkKey(next http.Handler) http.Handler {
 			handleError(err, w)
 			return
 		}
-
 		next.ServeHTTP(w, r)
 	})
 }
