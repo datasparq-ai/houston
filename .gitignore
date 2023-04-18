@@ -1,6 +1,10 @@
-
+# IDE Files
+.vscode
 .idea
 .DS_Store
+
+# Logs
+logs
 
 # redis
 *.rdb
