@@ -13,7 +13,8 @@ func (a *API) Monitor() {
 	for {
 		a.DeleteExpiredMissions()
 		a.HealthCheck()
-		time.Sleep(2 * time.Second)
+		time.Sleep(5 * time.Second)
+		//time.Sleep(12 * time.Hour)
 	}
 }
 
@@ -40,14 +41,16 @@ func (a *API) DeleteExpiredMissions() {
 		fmt.Println(err)
 		return
 	}
+	fmt.Printf("Found '%v' keys\n", len(keys))
 
 	for _, key := range keys {
 		deletedMissions := 0
 
-		keyName, _ := a.db.Get(key, "n")
-		fmt.Printf("Looking at key '%v' for completed missions\n", keyName)
+		fmt.Printf("Looking at key '%v' for completed missions\n", key)
+		missions := a.CompletedMissions(key)
+		fmt.Printf("Found %v completed missions\n", len(missions))
 
-		for _, missionId := range a.CompletedMissions(key) {
+		for _, missionId := range missions {
 			fmt.Printf("Found completed mission '%v'\n", missionId)
 
 			if a.missionCanBeDeleted(key, missionId) {
@@ -61,30 +64,35 @@ func (a *API) DeleteExpiredMissions() {
 			}
 		}
 
-		fmt.Printf("Looking at key '%v' for active but expired missions\n", keyName)
+		fmt.Printf("Looking at key '%v' for active but expired missions\n", key)
 
-		missions, err := a.AllActiveMissions(key)
+		plans, err := a.ListPlans(key)
 		if err != nil {
 			//log.Error(err)
 			fmt.Println(err)
 			continue
 		}
 
-		for _, missionId := range missions {
-			fmt.Printf("Found active mission '%v'\n", missionId)
-			if a.missionCanBeDeleted(key, missionId) {
-				a.deleteMission(key, missionId)
-				deletedMissions++
-				fmt.Printf("Deleted '%v'\n", missionId)
-			} else {
-				fmt.Println("Not deleting mission because it's still in use")
-				// active missions are stored in chronological order, so we can stop the loop now
-				break
+		for _, planName := range plans {
+			fmt.Printf("Found plan '%v'\n", planName)
+
+			missions = a.ActiveMissions(key, planName)
+			fmt.Printf("Found %v active missions\n", len(missions))
+
+			for _, missionId := range missions {
+				fmt.Printf("Found active mission '%v'\n", missionId)
+				if a.missionCanBeDeleted(key, missionId) {
+					a.deleteMission(key, missionId)
+					deletedMissions++
+					fmt.Printf("Deleted '%v'\n", missionId)
+				} else {
+					fmt.Println("Not deleting mission because it's still in use")
+					// active missions are stored in chronological order, so we can stop the loop now
+					break
+				}
 			}
 		}
-
-		fmt.Printf("Deleted %v missions from key '%v'\n", deletedMissions, keyName)
-
+		fmt.Printf("Deleted %v missions from key '%v'\n", deletedMissions, key)
 	}
 }
 
@@ -96,8 +104,7 @@ func (a *API) missionCanBeDeleted(key string, missionId string) bool {
 	if !ok {
 		fmt.Printf("Mission '%v' will be deleted because can't read from the database\n", missionId)
 		return true
-	}
-	if ok {
+	} else {
 		err := json.Unmarshal([]byte(missionString), &miss)
 		if err != nil {
 			fmt.Printf("Mission '%v' will be deleted because can't be parsed as JSON, which makes it invalid\n", missionId)
@@ -117,5 +124,6 @@ func (a *API) missionCanBeDeleted(key string, missionId string) bool {
 			}
 		}
 	}
+	fmt.Printf("Mission '%v' won't be deleted because it started over %s ago\n", missionId, a.config.MissionExpiry)
 	return false
 }
