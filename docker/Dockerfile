@@ -15,9 +15,6 @@ RUN mkdir ./app && go build -v -o ./app ./...
 FROM alpine:3.17
 COPY --from=builder /usr/src/houston/app/* /usr/local/bin
 
-# install gettext utilities
-RUN apk add gettext
-
 EXPOSE 8000
 
 ENTRYPOINT ["houston"]
