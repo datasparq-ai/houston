@@ -1,10 +1,12 @@
-
+# ide files
+.vscode
 .idea
 .DS_Store
 
 # redis
 *.rdb
 
+# not required to build houston app
 /logs
 /examples
 /docs
