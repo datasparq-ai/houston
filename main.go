@@ -133,12 +133,15 @@ func (a *API) SetPassword(password string) error {
 
 // CreateKey initialises a new key/project. This is a different concept to Redis keys.
 func (a *API) CreateKey(key string, name string) (string, error) {
-	SetLoggingFile("")
 
 	// if key is not provided then create random key of length 40
 	if key == "" {
 		key = createRandomString(40)
 		log.Debug("Random key has been generated")
+	} else if strings.ContainsAny(key, disallowedCharacters) {
+		err := fmt.Errorf("key with ID '%v' is not allowed because it contains invalid characters. Keys may not contain any of the following characters: %v", key, disallowedCharacters)
+		log.Error(err.Error())
+		return "", err
 	}
 
 	err := a.db.CreateKey(key)
@@ -161,23 +164,21 @@ func (a *API) CreateKey(key string, name string) (string, error) {
 		return "", err3
 	}
 
-	log.Infof("Created key with ID '%s' and name '%s'", key, name)
-	SetLoggingFile(key)
-	log.Infof("Created key with ID '%s' and name '%s'", key, name)
-	SetLoggingFile("")
+	msg := fmt.Sprintf("Created key with ID '%s' and name '%s'", key, name)
+	log.Info(msg)
+	SetLoggingFile(keyLog, key)
+	keyLog.Infof(msg)
 
 	return key, nil
 }
 
 func (a *API) deleteKey(key string) error {
-	SetLoggingFile(key)
 	err := a.db.DeleteKey(key)
 	if err == nil {
 		log.Infof("Deleted key with name '%s'", key)
 	} else {
 		log.Errorf("Key deletion failed: %s", err)
 	}
-	SetLoggingFile("")
 	return err
 }
 
@@ -193,14 +194,12 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 
 	var planBytes []byte
 
-	SetLoggingFile(key)
 	// if plan name is provided then load plan
 	if !strings.Contains(planNameOrPlan, "{") {
 		if p, ok := a.db.Get(key, "p|"+planNameOrPlan); ok {
 			planBytes = []byte(p)
 		} else {
-			log.Error(&model.PlanNotFoundError{PlanName: planNameOrPlan})
-			SetLoggingFile("")
+			keyLog.Error(&model.PlanNotFoundError{PlanName: planNameOrPlan})
 			return "", &model.PlanNotFoundError{PlanName: planNameOrPlan}
 		}
 
@@ -214,37 +213,32 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 	var plan model.Plan
 	err := json.Unmarshal(planBytes, &plan) // this will catch any invalid params, services, etc.
 	if err != nil {
-		log.Errorf("JSON/Schema Error: %s", err)
-		SetLoggingFile("")
 		return "", err // TODO: catch json/schema errors and give helpful response
 	}
 
-	if strings.ContainsAny(plan.Name, string(disallowedCharacters)) {
+	if strings.ContainsAny(plan.Name, disallowedCharacters) {
 		err := fmt.Errorf("plan with name '%v' is not allowed because it contains invalid characters", plan.Name)
-		log.Error(err)
-		SetLoggingFile("")
 		return "", err
 	}
 
 	// convert plan to mission
 	m := NewMissionFromPlan(&plan)
-	log.Infof("Converted Plan to Mission")
+	keyLog.Infof("Converted Plan to Mission")
 
 	// validate graph
 	validationError := m.Validate()
 	if validationError != nil {
-		log.Errorf("Graph validation failed: %s", validationError)
-		SetLoggingFile("")
+		keyLog.Errorf("Graph validation failed: %s", validationError)
 		return "", validationError
 	} else {
-		log.Infof("Validated Mission Graph")
+		keyLog.Infof("Validated Mission Graph")
 	}
 
 	if missionId == "" {
 		// if no id is provided, use the key's usage count
 		usage, _ := a.db.Get(key, "u")
 		missionId = "m" + usage
-		log.Debugf("MissionID not provided. ID used instead: %s", missionId)
+		keyLog.Debugf("MissionID not provided. ID used instead: %s", missionId)
 
 		// check if mission id already exists
 		if _, exists := a.db.Get(key, missionId); exists {
@@ -258,9 +252,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 				if usageInt > 500 {
 					// this should be impossible because nobody would have this many missions at the same time
 					err := fmt.Errorf("couldn't create a mission because a new mission ID could not be generated")
-					log.Error(err)
-					SetLoggingFile("")
-					log.Warnf("User %s has reached the limit of 500 missions", key)
+					log.Warnf("User couldn't create mission due to infinte loop. Key: %s", key)
 					return "", err
 				}
 				missionId = fmt.Sprintf("m%v", usageInt)
@@ -271,26 +263,20 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 			}
 		}
 	} else {
-		if strings.ContainsAny(missionId, string(disallowedCharacters)) {
+		if strings.ContainsAny(missionId, disallowedCharacters) {
 			err := fmt.Errorf("mission with id '%v' is not allowed because it contains invalid characters", missionId)
-			log.Error(err)
-			SetLoggingFile("")
 			return "", err
 		}
 		// check for disallowed ids (reserved keys)
 		for _, k := range reservedKeys {
 			if missionId == k {
-				err := fmt.Errorf("mission with id '%v' is not allowed", missionId)
-				log.Errorf(" %s. Ensure mission does not have an id that is reserved.", err)
-				SetLoggingFile("")
+				err := fmt.Errorf("mission with id '%v' is not allowed. Ensure that mission ID is not one of the following reserved keys: %v", missionId, strings.Join(reservedKeys, ","))
 				return "", err
 			}
 		}
 		// check if mission id already exists
 		if _, exists := a.db.Get(key, missionId); exists {
 			err := fmt.Errorf("mission with id '%v' already exists", missionId)
-			log.Errorf("%s. Ensure mission does not have the same id as an existing mission.", err)
-			SetLoggingFile("")
 			return "", err
 		}
 	}
@@ -307,31 +293,23 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 	activeMissions += m.Id
 	err1 := a.db.Set(key, "a|"+m.Name, activeMissions)
 	if err1 != nil {
-		log.Error(err1)
-		SetLoggingFile("")
 		log.Warnf("User %s has encountered an error in CreateMissionFromPlan when updating database: %v", key, err1)
 		return m.Id, err1 // TODO: how to recover from this err?
 	}
 
 	a.ws <- message{key, "missionCreation", m.Bytes()}
 
-	log.Infof("Mission with id '%v' has been successfully created", missionId)
-	SetLoggingFile("")
+	keyLog.Infof("Mission with id '%v' has been successfully created", missionId)
 
 	return m.Id, nil
 }
 
 // ActiveMissions finds all missions for a plan. If plan doesn't exist then an empty list is returned.
 func (a *API) ActiveMissions(key string, plan string) []string {
-	SetLoggingFile(key)
 	missions, _ := a.db.Get(key, "a|"+plan)
 	if missions == "" {
-		log.Debugf("No missions found")
-		SetLoggingFile("")
 		return []string{}
 	}
-	log.Infof("Missions returned: %s", missions)
-	SetLoggingFile("")
 	return strings.Split(missions, ",")
 }
 
@@ -341,11 +319,8 @@ func (a *API) ActiveMissions(key string, plan string) []string {
 // efficient than using ActiveMissions.
 func (a *API) AllActiveMissions(key string) ([]string, error) {
 	var missions []string
-	SetLoggingFile(key)
 	allKeys, err := a.db.List(key, "")
 	if err != nil {
-		log.Errorf("Error when getting all active missions: %v", err)
-		SetLoggingFile("")
 		return missions, err
 	}
 	for _, s := range allKeys {
@@ -354,9 +329,6 @@ func (a *API) AllActiveMissions(key string) ([]string, error) {
 		}
 		missions = append(missions, s)
 	}
-	log.Infof("All active missions found in the API database attributed to key %s", key)
-	log.Debug("Inactive and archived missions are not stored in the API database")
-	SetLoggingFile("")
 
 	return missions, err
 }
@@ -364,18 +336,16 @@ func (a *API) AllActiveMissions(key string) ([]string, error) {
 // UpdateStageState updates the state of a stage within an in-progress mission.
 // POST /api/missions/[mission id]/stages/[stage name]
 func (a *API) UpdateStageState(key string, missionId string, stage string, state string, ignoreDependencies bool) (mission.Response, error) {
+	keyLog.Debugf("Updating stage '%s' state to '%s' in mission '%s'.", stage, state, missionId)
 
 	var res mission.Response
 	var missionBytes []byte
 
-	SetLoggingFile(key)
 	// define a function to perform on a mission within a transaction
 	txnFunc := func(missionString string) (string, error) {
 
 		m, err := mission.NewFromJSON([]byte(missionString))
 		if err != nil {
-			log.Errorf("Error when updating stage %s's state to %s in mission %s: %v", stage, state, missionId, err)
-			SetLoggingFile("")
 			// an error here is unlikely because all missions are validated before they get saved
 			return "", err // TODO: catch json/schema errors and give helpful response
 		}
@@ -383,31 +353,26 @@ func (a *API) UpdateStageState(key string, missionId string, stage string, state
 		switch state {
 		case "started":
 			res, err = m.StartStage(stage, ignoreDependencies)
-			log.Infof("Stage %s in mission %s has started", stage, missionId)
 		case "finished":
 			res, err = m.FinishStage(stage, ignoreDependencies)
-			log.Infof("Stage %s in mission %s has finished", stage, missionId)
 		case "skipped":
 			res, err = m.SkipStage(stage)
-			log.Warnf("Stage %s in mission %s was skipped", stage, missionId)
 		case "failed":
 			res, err = m.FailStage(stage)
-			log.Errorf("Stage %s in mission %s failed", stage, missionId)
 		case "excluded", "ignored":
 			res, err = m.ExcludeStage(stage)
-			log.Warnf("Stage %s in mission %s was ignored", stage, missionId)
 		default:
 			err = fmt.Errorf("invalid stage state '%v'; choose one of started, finished, failed, skipped, or excluded", state)
 		}
 
 		if err != nil {
-			log.Errorf("Error when updating stage %s's state to %s in mission %s: %v", stage, state, missionId, err)
-			SetLoggingFile("")
+			keyLog.Errorf("Error when updating stage %s's state to %s in mission %s: %s", stage, state, missionId, err)
 			return "", err
+		} else {
+			keyLog.Infof("Stage %s in mission %s has been set to %v", stage, missionId, state)
 		}
 
 		missionBytes = m.Bytes()
-		SetLoggingFile("")
 
 		return string(missionBytes), err
 	}
@@ -422,7 +387,7 @@ func (a *API) UpdateStageState(key string, missionId string, stage string, state
 		if err != nil {
 			switch err.(type) {
 			case *model.TransactionFailedError:
-				fmt.Printf("Got 'TransactionFailedError' when ending the stage. This is attempt number %v.\n", attempts+1)
+				keyLog.Debugf("Got 'TransactionFailedError' when ending the stage. This is attempt number %v.\n", attempts+1)
 				time.Sleep(10 * time.Millisecond * time.Duration((attempts+1)^2))
 				// retry the transaction
 			default:
@@ -444,42 +409,35 @@ func (a *API) UpdateStageState(key string, missionId string, stage string, state
 		completedList := append(a.CompletedMissions(key), missionId)
 		completedListBytes := strings.Join(completedList, ",")
 		a.db.Set(key, "c", completedListBytes)
-		log.Infof("Mission %s has completed", missionId)
+		keyLog.Infof("Mission %s is complete", missionId)
 	}
-	SetLoggingFile("")
 
 	return res, err
 }
 
 // CompletedMissions returns a list all missionIds that are completed so that they can be archived and deleted.
 func (a *API) CompletedMissions(key string) []string {
-	SetLoggingFile(key)
 	completedListString, ok := a.db.Get(key, "c")
 	if !ok || completedListString == "" { // this should never happen
-		SetLoggingFile("")
+		log.Warnf("Completed mission string is empty for key '%s'.", key)
 		return []string{}
 	}
 	completedList := strings.Split(completedListString, ",")
-	log.Infof("Got list of completed missions attributed to key '%s'", key)
-	SetLoggingFile("")
-
 	return completedList
 }
 
 // SavePlan stores a new plan in the database if that plan is valid. Current behaviour is to overwrite existing plans.
 func (a *API) SavePlan(key string, plan model.Plan) error {
-	SetLoggingFile(key)
 
 	// convert plan to mission for validation of graph only
 	m := NewMissionFromPlan(&plan)
 	err := m.Validate()
 	if err != nil {
-		SetLoggingFile("")
 		return err
 	}
 
 	planBytes, _ := json.Marshal(plan)
-	log.Infof("Converted Plan '%s' to Mission", plan.Name)
+	keyLog.Infof("Converted Plan '%s' to Mission", plan.Name)
 	p, _ := a.db.Get(key, "p|"+plan.Name)
 	err = a.db.Set(key, "p|"+plan.Name, string(planBytes))
 	// if plan already exists, do not re-create the 'active' key
@@ -487,14 +445,12 @@ func (a *API) SavePlan(key string, plan model.Plan) error {
 		err = a.db.Set(key, "a|"+plan.Name, "")
 	}
 	if err != nil {
-		log.Errorf("Error when saving plan to database: %v", err)
-		SetLoggingFile("")
+		keyLog.Errorf("Error when saving plan to database: %v", err)
 		log.Warnf("User %s encountered error when saving plan to database: %v", key, err)
 		return err
 	}
-	log.Infof("Plan '%s' has been saved.", plan.Name)
+	keyLog.Infof("Plan '%s' has been saved.", plan.Name)
 	a.ws <- message{key, "planCreation", planBytes}
-	SetLoggingFile("")
 	return nil
 }
 
@@ -522,7 +478,6 @@ Loop:
 		plans = append(plans, s)
 	}
 	log.Infof("Number of plans found: %v", len(plans))
-	SetLoggingFile("")
 	return plans, err
 }
 
@@ -580,9 +535,10 @@ func (a *API) Run() {
 	var err error
 	if a.protocol == "https" {
 
-		log.Infof("Houston ready to receive calls on https://%v/api/v1\n", a.config.TLS.Host)
+		msg := fmt.Sprintf("Houston ready to receive calls on https://%v/api/v1", a.config.TLS.Host)
+		log.Info(msg)
 		if isTerminal {
-			fmt.Printf("📡 Houston ready to receive calls on https://%v/api/v1\n", a.config.TLS.Host)
+			fmt.Println(msg)
 		}
 
 		if a.config.TLS.Auto {
@@ -613,10 +569,12 @@ func (a *API) Run() {
 			err = http.ListenAndServeTLS(":https", a.config.TLS.CertFile, a.config.TLS.KeyFile, a.router)
 		}
 	} else {
-		log.Infof("Houston ready to receive calls on http://localhost:%v/api/v1\n", a.config.Port)
+		msg := fmt.Sprintf("📡 Houston ready to receive calls on http://localhost:%v/api/v1", a.config.Port)
+		log.Info(msg)
 		if isTerminal {
-			fmt.Printf("📡 Houston ready to receive calls on http://localhost:%v/api/v1\n", a.config.Port)
+			fmt.Println(msg)
 		}
+
 		err = http.ListenAndServe(":"+a.config.Port, a.router)
 	}
 

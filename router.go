@@ -38,6 +38,7 @@ func (a *API) initRouter() {
 
 	router := mux.NewRouter().StrictSlash(true)
 	router.Use(rateLimit)
+	router.Use(loggingMiddleware)
 	go limiter.CleanUpIPs()
 
 	router.HandleFunc("/api/v1", a.GetStatus).Methods("GET")

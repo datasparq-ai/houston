@@ -15,24 +15,34 @@ import (
 )
 
 var dateLayout = "20060102"
+
+// log is used for logs that only the API server admin should be able to see
 var log *logrus.Logger
+
+// keyLog is used for logs relating to a specific API key. These are viewable by anyone with that API key via the logs viewer UI
+var keyLog *logrus.Logger
 var isTerminal bool
 
 func initLog() {
-	if term.IsTerminal(int(os.Stdout.Fd())) {
-		isTerminal = true
-	}
+	isTerminal = term.IsTerminal(int(os.Stdout.Fd()))
+
 	log = logrus.New()
+	log.SetFormatter(&logrus.JSONFormatter{})
+	log.SetLevel(logrus.DebugLevel)
+
+	keyLog = logrus.New()
 	log.SetFormatter(&logrus.JSONFormatter{})
 	log.SetLevel(logrus.DebugLevel)
 
 	// todo: get logs directory from config
 	err := os.MkdirAll("logs", 0700)
 	if err == nil {
-		SetLoggingFile("")
+		SetLoggingFile(log, "")
+		SetLoggingFile(keyLog, "")
 		log.Info("Logging started successfully")
 	} else {
 		log.SetOutput(os.Stderr)
+		keyLog.SetOutput(os.Stderr)
 		log.Info("Failed to log to file, using default stderr")
 	}
 
@@ -44,7 +54,7 @@ func initLog() {
 
 // SetLoggingFile switches the logging output file to a file specific to the key and the current day. If no key is
 // provided then logs go to the main logging file, which is only accessible by the admin.
-func SetLoggingFile(key string) {
+func SetLoggingFile(logger *logrus.Logger, key string) {
 
 	day := time.Now().Format(dateLayout)
 
@@ -61,17 +71,17 @@ func SetLoggingFile(key string) {
 		if key == "" {
 			// If in interactive terminal, stdout should only be used for print statements and logs only written to file
 			if isTerminal {
-				log.SetOutput(file)
+				logger.SetOutput(file)
 			} else {
 				mw := io.MultiWriter(os.Stdout, file)
-				log.SetOutput(mw)
+				logger.SetOutput(mw)
 			}
 		} else {
-			log.SetOutput(file)
+			logger.SetOutput(file)
 		}
 	} else {
-		log.SetOutput(os.Stderr)
-		log.Info("Failed to log to file, using default stderr")
+		logger.SetOutput(os.Stderr)
+		logger.Info("Failed to log to file, using default stderr")
 	}
 }
 
@@ -86,18 +96,16 @@ func SetLoggingFile(key string) {
 // @Failure 404,500 {object} model.Error
 // @Router /api/v1/logs [get]
 func (a *API) GetLogs(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("GetLogs")
 
 	key := r.Header.Get("x-access-key") // key has been checked by checkKey middleware
 	logDate := r.URL.Query().Get("date")
 
-	fmt.Println("LogDate = ", logDate)
 	if logDate == "" {
 		today := time.Now().Format(dateLayout)
 		logDate = today
 	}
 	// check that date is valid: look for invalid characters and check length
-	if strings.IndexAny(logDate, "\\/~.-_:; ") > -1 || len(logDate) != 8 {
+	if strings.ContainsAny(logDate, disallowedCharacters+"/~.-_:") || len(logDate) != 8 {
 		err := fmt.Errorf("invalid log query: '%v' is not a valid date; dates must use YYYYMMDD format", logDate)
 		handleError(err, w)
 		return

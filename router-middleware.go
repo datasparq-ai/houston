@@ -11,13 +11,25 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// checkKey runs before requests that require a key to check that the key exists in the API database
+// loggingMiddleware sets the logging output file to the relevant file for the request. There is one file per key per
+// day. This runs for all requests. If there is no API key then
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		key := r.Header.Get("x-access-key") // key hasn't been checked yet, but if key doesn't exist then it doesn't matter
+		SetLoggingFile(key)
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+// checkKey runs before requests that require a key to check that the key exists in the API database.
+// This also sets the logging output file to the relevant file for the request. There is one file per key per day.
 func (a *API) checkKey(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		key := r.Header.Get("x-access-key")
 		if key == "" {
 			err := &model.KeyNotProvidedError{}
-			//err := fmt.Errorf("key not provided")
 			handleError(err, w)
 			return
 		}
@@ -28,6 +40,7 @@ func (a *API) checkKey(next http.Handler) http.Handler {
 			handleError(err, w)
 			return
 		}
+		SetLoggingFile(key)
 		next.ServeHTTP(w, r)
 	})
 }

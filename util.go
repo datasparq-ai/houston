@@ -18,8 +18,8 @@ var reservedKeys = []string{"u", "n", "a", "c"}
 // letters contains all characters that can be used in generated API keys and the randomly generated salt
 var letters = []rune("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
-// these characters are not allowed in plan names or mission IDs
-var disallowedCharacters = []rune("| ,\n\r\t%&<>{}[]\\?;\"'`")
+// these characters are not allowed in keys, plan names or mission IDs
+var disallowedCharacters = "| ,\n\r\t%&<>{}[]\\?;\"'`"
 
 // used to create API keys and tokens
 func createRandomString(n int) string {
