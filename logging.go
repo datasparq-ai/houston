@@ -16,10 +16,11 @@ import (
 
 var dateLayout = "20060102"
 
-// log is used for logs that only the API server admin should be able to see
+// log is used for logs that only the API server admin should be able to see.
 var log *logrus.Logger
 
-// keyLog is used for logs relating to a specific API key. These are viewable by anyone with that API key via the logs viewer UI
+// keyLog is used for logs relating to a specific API key. These are viewable by anyone with that API key via the logs
+// viewer UI. Note that any logs sent to keyLog during a request to the admin sub-router will go to the admin log file.
 var keyLog *logrus.Logger
 var isTerminal bool
 
@@ -31,8 +32,8 @@ func initLog() {
 	log.SetLevel(logrus.DebugLevel)
 
 	keyLog = logrus.New()
-	log.SetFormatter(&logrus.JSONFormatter{})
-	log.SetLevel(logrus.DebugLevel)
+	keyLog.SetFormatter(&logrus.JSONFormatter{})
+	keyLog.SetLevel(logrus.DebugLevel)
 
 	// todo: get logs directory from config
 	err := os.MkdirAll("logs", 0700)

@@ -35,10 +35,7 @@ type API struct {
 // It will create or connect to a database depending on the settings in the config file.
 // local db will only persist while program is running.
 func New(configPath string) API {
-	SetLoggingFile("")
-	log.Debugf("Loading configuration from %s", configPath)
 	config := LoadConfig(configPath)
-	log.Debug("Configuration Loaded")
 
 	var db database.Database
 	// attempt to connect to redis - if not found then use local db
@@ -87,7 +84,7 @@ func New(configPath string) API {
 
 	a := API{db, nil, nil, config, protocol}
 
-	log.Debug("API Instance Created")
+	log.Debugf("API will use the %s protocol", protocol)
 
 	config.Password = strings.Trim(config.Password, " \n\t")
 	if config.Password != "" {
@@ -95,24 +92,23 @@ func New(configPath string) API {
 		if err != nil {
 			log.Fatal(err)
 		}
+		log.Debug("API password set successfully")
 	} else {
 		if protocol == "https" {
 			// assume that https is being used because server is in production
 			log.Fatal("It is not recommended to run Houston in production without setting a server password, as this allows anyone to create or delete API keys.")
 		}
+		log.Warn("API has no admin password")
 	}
 
 	a.initRouter()
-	log.Debug("Router initialised")
 	a.initDashboard()
-	log.Debug("Dashboard initialsied")
 	a.initWebSocket()
 	log.Debug("Websocket initialised")
 	return a
 }
 
 func (a *API) SetPassword(password string) error {
-	SetLoggingFile("")
 	log.Info("Attempt made to set new password")
 
 	if len(password) < 10 {
@@ -139,8 +135,8 @@ func (a *API) CreateKey(key string, name string) (string, error) {
 		key = createRandomString(40)
 		log.Debug("Random key has been generated")
 	} else if strings.ContainsAny(key, disallowedCharacters) {
-		err := fmt.Errorf("key with ID '%v' is not allowed because it contains invalid characters. Keys may not contain any of the following characters: %v", key, disallowedCharacters)
-		log.Error(err.Error())
+		err := fmt.Errorf("key with ID '%v' is not allowed because it contains invalid characters. Keys may not contain any newlines parenthases, backslashes, etc", key)
+		log.Error(err)
 		return "", err
 	}
 
@@ -164,10 +160,10 @@ func (a *API) CreateKey(key string, name string) (string, error) {
 		return "", err3
 	}
 
-	msg := fmt.Sprintf("Created key with ID '%s' and name '%s'", key, name)
-	log.Info(msg)
+	log.Infof("Created key with ID '%s' and name '%s'", key, name)
+
 	SetLoggingFile(keyLog, key)
-	keyLog.Infof(msg)
+	keyLog.Info("Key created")
 
 	return key, nil
 }
@@ -283,7 +279,12 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 	m.Id = missionId
 	m.Start = time.Now()
 
-	a.db.Set(key, m.Id, string(m.Bytes()))
+	// todo: this could only be a database connection error - these should be retried at least 3 times
+	err = a.db.Set(key, m.Id, string(m.Bytes()))
+	if err != nil {
+		log.Warnf("User %s has encountered an error in CreateMissionFromPlan when updating database: %v", key, err)
+		return "", err
+	}
 
 	// add to active missions - this key may not exist if plan has never been created before
 	activeMissions, _ := a.db.Get(key, "a|"+m.Name)
@@ -458,14 +459,16 @@ func (a *API) SavePlan(key string, plan model.Plan) error {
 // The complete list of plans is the union of all saved plans and all active plans
 func (a *API) ListPlans(key string) ([]string, error) {
 
-	SetLoggingFile(key)
-	log.Infof("Listing plans attributed with key '%s'", key)
 	plans, err := a.db.List(key, "p")
 	for i, s := range plans {
 		plans[i] = strings.Replace(s, "p|", "", 1)
 	}
 
+	keyLog.Debugf("Found %v saved plans", len(plans))
+
 	activePlans, err := a.db.List(key, "a|")
+	keyLog.Debugf("Found %v active plans", len(activePlans))
+
 Loop:
 	for _, s := range activePlans {
 		s = strings.Replace(s, "a|", "", 1)
@@ -475,9 +478,10 @@ Loop:
 				continue Loop
 			}
 		}
+		keyLog.Debugf("Found active and unsaved plan '%v'", s)
 		plans = append(plans, s)
 	}
-	log.Infof("Number of plans found: %v", len(plans))
+	keyLog.Debugf("Found a total of %v plans", len(plans))
 	return plans, err
 }
 
@@ -486,12 +490,13 @@ Loop:
 func (a *API) initDashboard() {
 	var html []byte
 	var err error
-	SetLoggingFile("")
 	if a.config.Dashboard.Enabled {
 		// serve the houston console
 		a.router.HandleFunc("/console", func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(`<html><link rel="stylesheet" type="text/css" href="https://storage.googleapis.com/houston-static/console/main.css"><script src="https://storage.googleapis.com/houston-static/console/main.js"></script></html>`))
 		})
+		log.Infof("Initialised console UI")
+
 		if a.config.Dashboard.Src == "" {
 			html = []byte(`<!doctype html><html lang="en"><head><meta charset="utf-8"/>
  <link rel="icon" href="https://callhouston.io/houston-favicon.png"/>
@@ -502,29 +507,32 @@ func (a *API) initDashboard() {
  <link href="https://storage.googleapis.com/houston-static/dashboard/main.css" rel="stylesheet">
 </head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>
 `)
+			log.Infof("Using default dashboard UI")
 
 		} else {
 			html, err = os.ReadFile(a.config.Dashboard.Src)
 			if err != nil {
+				log.Error("Couldn't load custom dashboard UI HTML")
 				log.Panic(err)
 				panic(err)
 			}
+			log.Infof("Successfully loaded Custom dashboard UI HTML from %v", a.config.Dashboard.Src)
 		}
 
 		a.router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			w.Write(html)
 		})
-	}
 
-	if a.protocol == "https" {
-		log.Infof("Mission dashboard is live on https://%v\n", a.config.TLS.Host)
-		if isTerminal {
-			fmt.Printf("🔭 Mission dashboard is live on https://%v\n", a.config.TLS.Host)
+		var url string
+		if a.protocol == "https" {
+			url = fmt.Sprintf("https://%v\n", a.config.TLS.Host)
+		} else {
+			url = fmt.Sprintf("http://localhost:%v\n", a.config.Port)
 		}
-	} else {
-		log.Infof("Mission dashboard is live on http://localhost:%v\n", a.config.Port)
+		msg := "🔭 Mission dashboard is live on " + url
+		log.Info(msg)
 		if isTerminal {
-			fmt.Printf("🔭 Mission dashboard is live on https://localhost:%v\n", a.config.Port)
+			fmt.Printf(msg)
 		}
 	}
 }
@@ -535,7 +543,7 @@ func (a *API) Run() {
 	var err error
 	if a.protocol == "https" {
 
-		msg := fmt.Sprintf("Houston ready to receive calls on https://%v/api/v1", a.config.TLS.Host)
+		msg := fmt.Sprintf("📡 Houston ready to receive calls on https://%v/api/v1", a.config.TLS.Host)
 		log.Info(msg)
 		if isTerminal {
 			fmt.Println(msg)
@@ -644,8 +652,7 @@ func main() {
 				Run: func(c *cobra.Command, args []string) {
 					err := client.CreateKey(id, name, password)
 					if err != nil {
-						log.Panic(err)
-						panic(err)
+						client.HandleCommandLineError(err)
 					}
 				},
 			}
@@ -664,7 +671,6 @@ func main() {
 				Run: func(c *cobra.Command, args []string) {
 					err := client.Save(plan)
 					if err != nil {
-						log.Error(err)
 						client.HandleCommandLineError(err)
 					}
 				},
@@ -689,7 +695,6 @@ func main() {
 						strings.Split(strings.Replace(exclude, " ", "", -1), ","),
 						strings.Split(strings.Replace(skip, " ", "", -1), ","))
 					if err != nil {
-						log.Error(err)
 						client.HandleCommandLineError(err)
 					}
 				},

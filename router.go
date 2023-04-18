@@ -44,6 +44,8 @@ func (a *API) initRouter() {
 	router.HandleFunc("/api/v1", a.GetStatus).Methods("GET")
 
 	apiRouter := router.PathPrefix("/api/v1").Subrouter()
+	//apiRouter.Use(rateLimit)
+	//apiRouter.Use(loggingMiddleware)
 	apiRouter.Use(a.checkKey)
 	apiRouter.HandleFunc("/plans/", a.GetPlans).Methods("GET")
 	apiRouter.HandleFunc("/plans", a.PostPlan).Methods("POST")
@@ -72,5 +74,7 @@ func (a *API) initRouter() {
 	//apiKeyRouter.HandleFunc("/password", a.PostPassword).Methods("GET")  // TODO: route to change password
 
 	a.router = router
+
+	log.Debug("Router initialised")
 
 }
