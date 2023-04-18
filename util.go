@@ -4,11 +4,12 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"github.com/datasparq-ai/houston/mission"
-	"github.com/datasparq-ai/houston/model"
 	"math/rand"
 	"net/http"
 	"strings"
+
+	"github.com/datasparq-ai/houston/mission"
+	"github.com/datasparq-ai/houston/model"
 )
 
 // reservedKeys can't be used as mission names
@@ -58,6 +59,7 @@ func NewMissionFromPlan(plan *model.Plan) *mission.Mission {
 // handleError writes an error http response given an error object
 func handleError(err error, w http.ResponseWriter) {
 	res := model.Error{Message: err.Error(), Type: strings.Replace(fmt.Sprintf("%T", err), "*", "", 1)}
+	log.Error(err)
 	payload, _ := json.Marshal(res)
 	switch err.(type) {
 	case *model.TransactionFailedError, *model.TooManyRequestsError:
