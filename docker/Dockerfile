@@ -1,4 +1,5 @@
-FROM golang:1.18-alpine
+# create a builder enviornment to create houston app
+FROM golang:1.18-alpine as builder
 
 WORKDIR /usr/src/houston
 
@@ -6,8 +7,13 @@ WORKDIR /usr/src/houston
 COPY go.mod go.sum ./
 RUN go mod download && go mod verify
 
+# build houston application
 COPY . .
-RUN go build -v -o /usr/local/bin ./...
+RUN mkdir ./app && go build -v -o ./app ./...
+
+# copy complied houston app to fresh alpine image
+FROM alpine:3.17
+COPY --from=builder /usr/src/houston/app/* /usr/local/bin
 
 # install gettext utilities
 RUN apk add gettext
