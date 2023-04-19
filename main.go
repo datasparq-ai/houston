@@ -43,29 +43,31 @@ func New(configPath string) API {
 	err := db.Ping()
 	switch e := err.(type) {
 	case nil:
-		log.Infof("Connected to Redis Database at %v\n", config.Redis.Addr)
+		msg := fmt.Sprintf("🚨 Connected to Redis Database at %v", config.Redis.Addr)
+		log.Info(msg)
 		if isTerminal {
-			fmt.Printf("🚨 Connected to Redis Database at %v\n", config.Redis.Addr)
+			fmt.Println(msg)
 		}
 	case *net.OpError:
 		switch e.Err.(type) {
 		case *os.SyscallError:
 			// TODO: fail in production mode (and unittest mode)
-			log.Warnf("⚠️ Couldn't connect to Redis Database at %v. Using in-memory database.\n", config.Redis.Addr)
+			msg := fmt.Sprintf("⚠️ Couldn't connect to Redis Database at %v. Using in-memory database.", config.Redis.Addr)
+			log.Warn(msg)
 			if isTerminal {
-				fmt.Printf("⚠️ Couldn't connect to Redis Database at %v. Using in-memory database.\n", config.Redis.Addr)
+				fmt.Println(msg)
 			}
 			db = database.NewLocalDatabase()
 		case *net.AddrError:
-			log.Fatal("Do not add protocol to Redis.Addr")
-			log.Panic(err)
+			log.Error("Do not add protocol to Redis.Addr")
+			log.Error(err)
 			panic(err) // this happens when user puts protocol in Redis.Addr
 		default:
-			log.Panic(err)
+			log.Error(err)
 			panic(err)
 		}
 	default:
-		log.Panic(err)
+		log.Error(err)
 		panic(err)
 	}
 
@@ -90,13 +92,16 @@ func New(configPath string) API {
 	if config.Password != "" {
 		err := a.SetPassword(config.Password)
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
+			panic(err)
 		}
 		log.Debug("API password set successfully")
 	} else {
 		if protocol == "https" {
 			// assume that https is being used because server is in production
-			log.Fatal("It is not recommended to run Houston in production without setting a server password, as this allows anyone to create or delete API keys.")
+			err := fmt.Errorf("It is not recommended to run Houston in production without setting a server password, as this allows anyone to create or delete API keys.")
+			log.Error(err)
+			panic(err)
 		}
 		log.Warn("API has no admin password")
 	}
@@ -128,7 +133,9 @@ func (a *API) SetPassword(password string) error {
 }
 
 // CreateKey initialises a new key/project. This is a different concept to Redis keys.
+// If the key already exists then it's name will be updated, but will otherwise be unchanged.
 func (a *API) CreateKey(key string, name string) (string, error) {
+	log.Debugf("Creating key %v with name %v", key, name)
 
 	// if key is not provided then create random key of length 40
 	if key == "" {
@@ -140,30 +147,46 @@ func (a *API) CreateKey(key string, name string) (string, error) {
 		return "", err
 	}
 
-	err := a.db.CreateKey(key)
+	// check if key already exists
+	usage, exists := a.db.Get(key, "u")
+	if exists {
+		log.Debugf("Key already exists with usage: %v. Key name will be updated.", usage)
+
+	} else {
+
+		err := a.db.CreateKey(key)
+		if err != nil {
+			return "", err
+		}
+
+		// initialise key usage
+		err = a.db.Set(key, "u", "0")
+		if err != nil {
+			return "", err
+		}
+
+		// initialise completed missions
+		err = a.db.Set(key, "c", "")
+		if err != nil {
+			return "", err
+		}
+
+	}
+
+	// set the key name (this will change the name if key already exists)
+	err := a.db.Set(key, "n", name)
 	if err != nil {
 		return "", err
 	}
 
-	err1 := a.db.Set(key, "n", name)
-	err2 := a.db.Set(key, "u", "0") // usage
-	err3 := a.db.Set(key, "c", "")  // completed missions
-
-	if err1 != nil {
-		log.Error(err1)
-		return "", err1
-	} else if err2 != nil {
-		log.Error(err2)
-		return "", err2
-	} else if err3 != nil {
-		log.Error(err3)
-		return "", err3
-	}
-
-	log.Infof("Created key with ID '%s' and name '%s'", key, name)
-
 	SetLoggingFile(keyLog, key)
-	keyLog.Info("Key created")
+	if exists {
+		log.Infof("Updated key with ID '%s' and name '%s'", key, name)
+		keyLog.Infof("Key updated. New name: '%v'", name)
+	} else {
+		log.Infof("Created key with ID '%s' and name '%s'", key, name)
+		keyLog.Infof("Key created. Name: '%v'", name)
+	}
 
 	return key, nil
 }
@@ -513,7 +536,7 @@ func (a *API) initDashboard() {
 			html, err = os.ReadFile(a.config.Dashboard.Src)
 			if err != nil {
 				log.Error("Couldn't load custom dashboard UI HTML")
-				log.Panic(err)
+				log.Error(err)
 				panic(err)
 			}
 			log.Infof("Successfully loaded Custom dashboard UI HTML from %v", a.config.Dashboard.Src)
@@ -525,14 +548,14 @@ func (a *API) initDashboard() {
 
 		var url string
 		if a.protocol == "https" {
-			url = fmt.Sprintf("https://%v\n", a.config.TLS.Host)
+			url = fmt.Sprintf("https://%v", a.config.TLS.Host)
 		} else {
-			url = fmt.Sprintf("http://localhost:%v\n", a.config.Port)
+			url = fmt.Sprintf("http://localhost:%v", a.config.Port)
 		}
 		msg := "🔭 Mission dashboard is live on " + url
 		log.Info(msg)
 		if isTerminal {
-			fmt.Printf(msg)
+			fmt.Println(msg)
 		}
 	}
 }
@@ -587,7 +610,8 @@ func (a *API) Run() {
 	}
 
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
+		panic(err)
 	}
 
 }
@@ -622,7 +646,7 @@ func main() {
 				Use:   "version",
 				Short: "Print the version number",
 				Run: func(c *cobra.Command, args []string) {
-					fmt.Println("v0.2.0")
+					fmt.Println("v0.3.0")
 				},
 			}
 			return
@@ -722,7 +746,6 @@ func main() {
 
 		return
 	}().Execute(); err != nil {
-		log.Panic(err)
 		panic(err)
 	}
 }

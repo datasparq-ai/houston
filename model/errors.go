@@ -37,3 +37,9 @@ type BadCredentialsError struct{}
 func (m *BadCredentialsError) Error() string {
 	return "Incorrect username/password."
 }
+
+type InternalError struct{}
+
+func (m *InternalError) Error() string {
+	return "Houston, we have a problem. There was an error in the API server when processing the request."
+}

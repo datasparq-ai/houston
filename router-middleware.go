@@ -11,10 +11,33 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// loggingMiddleware runs for all requests and logs the details of the request. It also sets the logging output file to
+// recovery middleware recovers from panics and returns 500.
+func recovery(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		defer func() {
+			err := recover()
+			if err != nil {
+
+				log.Error(err)
+				keyLog.Error(err)
+
+				err1 := &model.InternalError{}
+
+				handleError(err1, w)
+				return
+			}
+		}()
+
+		next.ServeHTTP(w, r)
+
+	})
+}
+
+// logRequest runs for all requests and logs the details of the request. It also sets the logging output file to
 // the relevant file for the key. There is one file per key per day. If there is no key or the key provided doesn't
 // exist then it won't matter as either there will be no logs to the keyLog, or the request will fail in API.checkKey.
-func loggingMiddleware(next http.Handler) http.Handler {
+func logRequest(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		SetLoggingFile(log, "")
 		key := r.Header.Get("x-access-key")

@@ -1,5 +1,5 @@
 
-# Houston Docker Image 
+# Houston Docker Image
 
 The Houston docker image can be used to quickly deploy the Houston API or run the command line tool.
 

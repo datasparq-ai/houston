@@ -60,7 +60,7 @@ func SetLoggingFile(logger *logrus.Logger, key string) {
 	day := time.Now().Format(dateLayout)
 
 	var logFileName string
-	if key == "" {
+	if key == "" || strings.ContainsAny(key, disallowedCharacters) {
 		logFileName = "logs/api_" + day + "_log.txt"
 	} else {
 		logFileName = "logs/key_" + key + "_" + day + "_log.txt"

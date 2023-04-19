@@ -68,6 +68,8 @@ func handleError(err error, w http.ResponseWriter) {
 		w.WriteHeader(http.StatusNotFound)
 	case *model.BadCredentialsError:
 		w.WriteHeader(http.StatusForbidden)
+	case *model.InternalError:
+		w.WriteHeader(http.StatusInternalServerError)
 	default:
 		w.WriteHeader(http.StatusBadRequest)
 	}
