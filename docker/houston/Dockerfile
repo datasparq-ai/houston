@@ -1,3 +1,6 @@
+# this creates the datasparq/houston image
+# see docs/docker for more information
+
 # create a builder enviornment to create houston app
 FROM golang:1.18-alpine as builder
 
