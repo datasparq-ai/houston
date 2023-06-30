@@ -57,10 +57,10 @@ func (client *Client) request(method, path string, body []byte) *http.Response {
 	if err != nil {
 		panic(err)
 	}
-	if resp.StatusCode == http.StatusTooManyRequests {
+	if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == 572 {
 		// wait and retry up to 100 times
 		loopCounter := 0
-		for resp.StatusCode == http.StatusTooManyRequests && loopCounter < 100 {
+		for (resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == 572) && loopCounter < 100 {
 			time.Sleep(time.Millisecond * 100)
 			loopCounter++
 

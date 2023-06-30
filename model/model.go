@@ -5,6 +5,7 @@ import "github.com/datasparq-ai/houston/mission"
 type Error struct {
 	Type    string `json:"type"`
 	Message string `json:"message"`
+	Code    int    `json:"code"`
 }
 
 type Success struct {

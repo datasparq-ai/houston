@@ -59,20 +59,16 @@ func NewMissionFromPlan(plan *model.Plan) *mission.Mission {
 // handleError writes an error http response given an error object
 func handleError(err error, w http.ResponseWriter) {
 	keyLog.Error(err)
-	res := model.Error{Message: err.Error(), Type: strings.Replace(fmt.Sprintf("%T", err), "*", "", 1)}
-	payload, _ := json.Marshal(res)
-	switch err.(type) {
-	case *model.TransactionFailedError, *model.TooManyRequestsError:
-		w.WriteHeader(http.StatusTooManyRequests)
-	case *model.KeyNotFoundError, *model.PlanNotFoundError:
-		w.WriteHeader(http.StatusNotFound)
-	case *model.BadCredentialsError:
-		w.WriteHeader(http.StatusForbidden)
-	case *model.InternalError:
-		w.WriteHeader(http.StatusInternalServerError)
-	default:
-		w.WriteHeader(http.StatusBadRequest)
+
+	res := model.Error{
+		Message: err.Error(),
+		Type:    strings.Replace(fmt.Sprintf("%T", err), "*", "", 1),
+		Code:    model.ErrorCode(err),
 	}
+
+	payload, _ := json.Marshal(res)
+
+	w.WriteHeader(res.Code)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(payload)
 }
