@@ -24,7 +24,9 @@ COPY --from=builder /usr/src/houston/docker/houston-redis/start.sh /start.sh
 
 RUN chmod +x /start.sh
 
-EXPOSE 8000
+ENV HOUSTON_PORT=8000
+
+EXPOSE $HOUSTON_PORT 80 443
 
 # run redis in the background then start Houston
 # note: the entrypoint is essentially "houston"
