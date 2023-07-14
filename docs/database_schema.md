@@ -40,6 +40,8 @@ Redis Schema:
   e: 2022-03-03T16:35:47.559127Z       # end
   p:                                   # params (plan params + mission params)
     foo: bar
+m|p: <hash>                          # server metadata - hashed password
+m|s: <random string>                 # salt
 ```
 
 ### Local Database
@@ -80,7 +82,8 @@ Simple schema used by local db, which is of type `map[string]map[string]string`:
       foo: bar
   p|<plan-name>: "{\"name\": \"apollo\", \"stages\": [] }"
   a|<plan-name>: m1,m2,m3
-
+m|p: <hash>                          # server metadata - hashed password
+m|s: <random string>                 # salt
 ```
 
 ### FAQ

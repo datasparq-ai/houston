@@ -29,7 +29,7 @@ type TLSConfig struct {
 	KeyFile  string `yaml:"keyFile" env:"TLS_KEY_FILE" env-default:"key.pem"`
 }
 
-func LoadConfig(configPath string) *Config {
+func LoadConfig(configPath string) Config {
 	var config Config
 	if configPath == "" {
 		err := cleanenv.ReadEnv(&config)
@@ -42,5 +42,5 @@ func LoadConfig(configPath string) *Config {
 			panic(err)
 		}
 	}
-	return &config
+	return config
 }

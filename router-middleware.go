@@ -21,6 +21,14 @@ func (a *API) checkKey(next http.Handler) http.Handler {
 			handleError(err, w)
 			return
 		}
+		// prevent any requests from using reserved keys
+		for _, k := range reservedKeys {
+			if key == k {
+				err := fmt.Errorf("key with id '%v' is not allowed because this value is reserved", key)
+				handleError(err, w)
+				return
+			}
+		}
 		// check that key exists
 		_, ok := a.db.Get(key, "u")
 		if !ok {
