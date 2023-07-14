@@ -35,7 +35,7 @@ type API struct {
 // New creates the Houston API object.
 // It will create or connect to a database depending on the settings in the config file.
 // local db will only persist while program is running.
-func New(configPath string) API {
+func New(configPath string) *API {
 	recovering := false
 	SetLoggingFile("")
 	log.Debugf("Loading configuration from %s", configPath)
@@ -108,12 +108,12 @@ func New(configPath string) API {
 
 	log.Debug("API Instance Created")
 
-	config.Password = strings.Trim(config.Password, " \n\t")
+	a.config.Password = strings.Trim(a.config.Password, " \n\t")
 	if recovering {
 		log.Info("Houston is recovering and password already exists, so config.Password will be ignored")
 		password, _ := db.Get("m", "p") // this is already hashed
 		salt, _ := db.Get("m", "s")
-		if hashPassword(config.Password, salt) != password {
+		if hashPassword(a.config.Password, salt) != password {
 			log.Warn("Password provided via the config object or HOUSTON_PASSWORD environment variable doesn't match " +
 				"the password found when recovering. This happens because the password has been changed since the config was set. " +
 				"Ensure that you do not accidentally use the old password.")
@@ -121,7 +121,7 @@ func New(configPath string) API {
 		a.config.Password = password
 		a.config.Salt = salt
 	} else if config.Password != "" {
-		err := a.SetPassword(config.Password)
+		err := a.SetPassword(a.config.Password)
 		if err != nil {
 			if isTerminal {
 				panic(err)
@@ -142,7 +142,7 @@ func New(configPath string) API {
 	log.Debug("Dashboard initialised")
 	a.initWebSocket()
 	log.Debug("Websocket initialised")
-	return a
+	return &a
 }
 
 func (a *API) SetPassword(password string) error {

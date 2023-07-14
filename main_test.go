@@ -268,6 +268,9 @@ func TestAPI_UsePassword(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Got an error setting a valid password.")
 	}
+	if a.config.Password != hashPassword("foobar1234", a.config.Salt) {
+		t.Fatalf("Password not set correctly.")
+	}
 
 	go a.Run()
 
