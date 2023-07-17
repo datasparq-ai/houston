@@ -689,7 +689,7 @@ func main() {
 				Use:   "version",
 				Short: "Print the version number",
 				Run: func(c *cobra.Command, args []string) {
-					fmt.Println("v0.3.0")
+					fmt.Println("v0.3.1")
 				},
 			}
 			return
