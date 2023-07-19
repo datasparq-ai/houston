@@ -23,18 +23,22 @@ import (
 	// "golang.org/x/term"
 )
 
+// API is an instance of the Houston orchestration API
 type API struct {
-	db       database.Database
-	router   *mux.Router
-	ws       chan message
-	config   *Config
-	protocol string
+	db       database.Database // connection to a database instance, either Redis or 'local' held within a single object in Go
+	router   *mux.Router       // the router that routes all requests to request handlers
+	ws       chan message      // WebSocket channel. Any events sent
+	config   Config            // configuration - see docs/config for full documentation
+	protocol string            // this is set to either 'http' or 'https' depending on config.TLSConfig
 }
 
 // New creates the Houston API object.
 // It will create or connect to a database depending on the settings in the config file.
 // local db will only persist while program is running.
-func New(configPath string) API {
+func New(configPath string) *API {
+	recovering := false
+
+	log.Debugf("Loading configuration from %s", configPath)
 	config := LoadConfig(configPath)
 
 	var db database.Database
@@ -48,6 +52,23 @@ func New(configPath string) API {
 		if isTerminal {
 			fmt.Println(msg)
 		}
+
+		// note: servers that don't have passwords can't recover - this is intentional to aid local development / unit tests
+		_, passwordExists := db.Get("m", "p")
+		_, saltExists := db.Get("m", "s")
+
+		if passwordExists && saltExists {
+
+			keys, _ := db.ListKeys()
+
+			msg := fmt.Sprintf("Houston is recovering using existing settings, keys, and plans - found %v keys", len(keys))
+			log.Info(msg)
+			if isTerminal {
+				fmt.Println("🔧 " + msg)
+			}
+			recovering = true
+		}
+
 	case *net.OpError:
 		switch e.Err.(type) {
 		case *os.SyscallError:
@@ -88,12 +109,25 @@ func New(configPath string) API {
 
 	log.Debugf("API will use the %s protocol", protocol)
 
-	config.Password = strings.Trim(config.Password, " \n\t")
-	if config.Password != "" {
-		err := a.SetPassword(config.Password)
+	a.config.Password = strings.Trim(a.config.Password, " \n\t")
+	if recovering {
+		log.Info("Houston is recovering and password already exists, so config.Password will be ignored")
+		password, _ := db.Get("m", "p") // this is already hashed
+		salt, _ := db.Get("m", "s")
+		if hashPassword(a.config.Password, salt) != password {
+			log.Warn("Password provided via the config object or HOUSTON_PASSWORD environment variable doesn't match " +
+				"the password found when recovering. This happens because the password has been changed since the config was set. " +
+				"Ensure that you do not accidentally use the old password.")
+		}
+		a.config.Password = password
+		a.config.Salt = salt
+	} else if config.Password != "" {
+		err := a.SetPassword(a.config.Password)
 		if err != nil {
-			log.Error(err)
-			panic(err)
+			if isTerminal {
+				panic(err)
+			}
+			log.Fatal(err)
 		}
 		log.Debug("API password set successfully")
 	} else {
@@ -109,8 +143,7 @@ func New(configPath string) API {
 	a.initRouter()
 	a.initDashboard()
 	a.initWebSocket()
-	log.Debug("Websocket initialised")
-	return a
+	return &a
 }
 
 func (a *API) SetPassword(password string) error {
@@ -128,6 +161,10 @@ func (a *API) SetPassword(password string) error {
 	// Salt changes if the password is changed
 	a.config.Salt = createRandomString(10)
 	a.config.Password = hashPassword(password, a.config.Salt)
+
+	// store hashed password in db for disaster recovery
+	a.db.Set("m", "p", a.config.Password)
+	a.db.Set("m", "s", a.config.Salt)
 	log.Info("New password has been set")
 	return nil
 }
@@ -145,6 +182,14 @@ func (a *API) CreateKey(key string, name string) (string, error) {
 		err := fmt.Errorf("key with ID '%v' is not allowed because it contains invalid characters. Keys may not contain any newlines parenthases, backslashes, etc", key)
 		log.Error(err)
 		return "", err
+	}
+
+	// check for disallowed ids (reserved keys)
+	for _, k := range reservedKeys {
+		if key == k {
+			err := fmt.Errorf("key with id '%v' is not allowed because this value is reserved", key)
+			return "", err
+		}
 	}
 
 	// check if key already exists
@@ -175,6 +220,7 @@ func (a *API) CreateKey(key string, name string) (string, error) {
 
 	// set the key name (this will change the name if key already exists)
 	err := a.db.Set(key, "n", name)
+
 	if err != nil {
 		return "", err
 	}
@@ -646,7 +692,7 @@ func main() {
 				Use:   "version",
 				Short: "Print the version number",
 				Run: func(c *cobra.Command, args []string) {
-					fmt.Println("v0.3.0")
+					fmt.Println("v0.4.0")
 				},
 			}
 			return

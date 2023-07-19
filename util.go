@@ -12,8 +12,8 @@ import (
 	"github.com/datasparq-ai/houston/model"
 )
 
-// reservedKeys can't be used as mission names
-var reservedKeys = []string{"u", "n", "a", "c"}
+// reservedKeys can't be used as mission names or keys
+var reservedKeys = []string{"u", "n", "a", "c", "m"}
 
 // letters contains all characters that can be used in generated API keys and the randomly generated salt
 var letters = []rune("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")

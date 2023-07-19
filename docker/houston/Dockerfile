@@ -1,3 +1,6 @@
+# this creates the datasparq/houston image
+# see docs/docker for more information
+
 # create a builder enviornment to create houston app
 FROM golang:1.18-alpine as builder
 
@@ -15,6 +18,8 @@ RUN mkdir ./app && go build -v -o ./app ./...
 FROM alpine:3.17
 COPY --from=builder /usr/src/houston/app/* /usr/local/bin
 
-EXPOSE 8000
+ENV HOUSTON_PORT=8000
+
+EXPOSE $HOUSTON_PORT 80 443
 
 ENTRYPOINT ["houston"]

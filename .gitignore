@@ -6,7 +6,7 @@
 *.rdb
 
 # binaries
-houston
+./houston
 
 # logging output
 logs

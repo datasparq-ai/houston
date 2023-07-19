@@ -32,7 +32,7 @@ type TLSConfig struct {
 	KeyFile  string `yaml:"keyFile" env:"TLS_KEY_FILE" env-default:"key.pem" json:"keyFile"`
 }
 
-func LoadConfig(configPath string) *Config {
+func LoadConfig(configPath string) Config {
 	var config Config
 	if configPath == "" {
 		log.Debug("Using configuration environment")
@@ -47,8 +47,9 @@ func LoadConfig(configPath string) *Config {
 			panic(err)
 		}
 	}
+
 	configJson, _ := json.Marshal(config)
 	log.Debug("Configuration Loaded: ", string(configJson))
 
-	return &config
+	return config
 }

@@ -10,7 +10,9 @@ Quick links:
   - Python: [PyPi](https://pypi.org/project/houston-client/), [source](https://github.com/datasparq-intelligent-products/houston-python)
   - Go [WIP]: [github.com/datasparq-ai/houston/client](https://github.com/datasparq-ai/houston/client)
   - Other Languages (generated): [swagger.json](todo)
-- Docker image: [Docker Hub](https://hub.docker.com/r/datasparq/houston), [source](../docker/Dockerfile)
+- Docker images: 
+  - [docker.io/datasparq/houston](https://hub.docker.com/r/datasparq/houston), [source](../docker/houston/Dockerfile)
+  - [docker.io/datasparq/houston-redis](https://hub.docker.com/r/datasparq/houston-redis), [source](../docker/houston-redis/Dockerfile)
 - Terraform modules:
   - houston/google: [registry](https://registry.terraform.io/modules/datasparq-ai/houston/google/latest), [source](https://github.com/datasparq-ai/terraform-google-houston)
   - houston-key/google: [registry](https://registry.terraform.io/modules/datasparq-ai/houston-key/google/latest), [source](https://github.com/datasparq-ai/terraform-google-houston-key)
