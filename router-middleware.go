@@ -44,15 +44,19 @@ func logRequest(next http.Handler) http.Handler {
 		key := r.Header.Get("x-access-key")
 		SetLoggingFile(keyLog, key)
 
-		requestInfo, _ := json.Marshal(map[string]interface{}{
-			"method":     r.Method,
-			"path":       r.URL.Path,
-			"proto":      r.Proto,
-			"header":     r.Header,
-			"remoteAddr": r.RemoteAddr,
-		})
+		if r.URL.Path == "/api/v1" {
+			// do not log health check requests as there will be too many of these
+		} else {
+			requestInfo, _ := json.Marshal(map[string]interface{}{
+				"method":     r.Method,
+				"path":       r.URL.Path,
+				"proto":      r.Proto,
+				"header":     r.Header,
+				"remoteAddr": r.RemoteAddr,
+			})
 
-		log.Debug(string(requestInfo))
+			log.Debug(string(requestInfo))
+		}
 		next.ServeHTTP(w, r)
 	})
 }

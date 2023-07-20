@@ -35,7 +35,7 @@ type TLSConfig struct {
 func LoadConfig(configPath string) Config {
 	var config Config
 	if configPath == "" {
-		log.Debug("Using configuration environment")
+		log.Debug("No config file provided. Loading configuration from environment variables")
 		err := cleanenv.ReadEnv(&config)
 		if err != nil {
 			panic(err)

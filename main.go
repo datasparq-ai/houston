@@ -36,9 +36,10 @@ type API struct {
 // It will create or connect to a database depending on the settings in the config file.
 // local db will only persist while program is running.
 func New(configPath string) *API {
+	initLog()
+
 	recovering := false
 
-	log.Debugf("Loading configuration from %s", configPath)
 	config := LoadConfig(configPath)
 
 	var db database.Database
@@ -47,10 +48,10 @@ func New(configPath string) *API {
 	err := db.Ping()
 	switch e := err.(type) {
 	case nil:
-		msg := fmt.Sprintf("🚨 Connected to Redis Database at %v", config.Redis.Addr)
+		msg := fmt.Sprintf("Connected to Redis Database at %v", config.Redis.Addr)
 		log.Info(msg)
 		if isTerminal {
-			fmt.Println(msg)
+			fmt.Println("🚨 " + msg)
 		}
 
 		// note: servers that don't have passwords can't recover - this is intentional to aid local development / unit tests
@@ -73,11 +74,17 @@ func New(configPath string) *API {
 		switch e.Err.(type) {
 		case *os.SyscallError:
 			// TODO: fail in production mode (and unittest mode)
-			msg := fmt.Sprintf("⚠️ Couldn't connect to Redis Database at %v. Using in-memory database.", config.Redis.Addr)
+
+			msg := fmt.Sprintf("Couldn't connect to Redis Database at %v.", config.Redis.Addr)
 			log.Warn(msg)
-			if isTerminal {
-				fmt.Println(msg)
+
+			// if redis address is not the default then this is an error
+			if config.Redis.Addr != "localhost:6379" {
+				panic(msg)
+			} else if isTerminal {
+				fmt.Println("⚠️ " + msg + " Using in-memory database")
 			}
+
 			db = database.NewLocalDatabase()
 		case *net.AddrError:
 			log.Error("Do not add protocol to Redis.Addr")
@@ -598,10 +605,10 @@ func (a *API) initDashboard() {
 		} else {
 			url = fmt.Sprintf("http://localhost:%v", a.config.Port)
 		}
-		msg := "🔭 Mission dashboard is live on " + url
+		msg := "Mission dashboard is live on " + url
 		log.Info(msg)
 		if isTerminal {
-			fmt.Println(msg)
+			fmt.Println("🔭 " + msg)
 		}
 	}
 }
@@ -612,10 +619,10 @@ func (a *API) Run() {
 	var err error
 	if a.protocol == "https" {
 
-		msg := fmt.Sprintf("📡 Houston ready to receive calls on https://%v/api/v1", a.config.TLS.Host)
+		msg := fmt.Sprintf("Houston ready to receive calls on https://%v/api/v1", a.config.TLS.Host)
 		log.Info(msg)
 		if isTerminal {
-			fmt.Println(msg)
+			fmt.Println("📡 " + msg)
 		}
 
 		if a.config.TLS.Auto {
@@ -646,10 +653,10 @@ func (a *API) Run() {
 			err = http.ListenAndServeTLS(":https", a.config.TLS.CertFile, a.config.TLS.KeyFile, a.router)
 		}
 	} else {
-		msg := fmt.Sprintf("📡 Houston ready to receive calls on http://localhost:%v/api/v1", a.config.Port)
+		msg := fmt.Sprintf("Houston ready to receive calls on http://localhost:%v/api/v1", a.config.Port)
 		log.Info(msg)
 		if isTerminal {
-			fmt.Println(msg)
+			fmt.Println("📡 " + msg)
 		}
 
 		err = http.ListenAndServe(":"+a.config.Port, a.router)
@@ -664,7 +671,6 @@ func (a *API) Run() {
 
 func init() {
 	rand.Seed(time.Now().UnixNano()) // change random seed
-	initLog()
 }
 
 func main() {
