@@ -151,14 +151,14 @@ func (a *API) DeleteMission(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		// remove from active missions
 		activeStr, _ := a.db.Get(key, "a|"+m.Name)
-		activeStr = strings.Replace(","+activeStr+",", ","+missionId+",", "", 1)
+		activeStr = strings.Replace(","+activeStr+",", ","+missionId+",", ",", 1)
 		activeStr = strings.Trim(activeStr, ",")
 		a.db.Set(key, "a|"+m.Name, activeStr)
 	}
 
 	// remove from completed missions
 	completeString, ok := a.db.Get(key, "c")
-	completeString = strings.Replace(","+completeString+",", ","+missionId+",", "", 1)
+	completeString = strings.Replace(","+completeString+",", ","+missionId+",", ",", 1)
 	completeString = strings.Trim(completeString, ",")
 	a.db.Set(key, "c", completeString)
 
