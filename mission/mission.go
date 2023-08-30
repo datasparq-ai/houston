@@ -328,7 +328,7 @@ func (m *Mission) FinishStage(stageName string, ignoreDependencies bool) (Respon
 
 // SkipStage changes a stage's state to skip using the following logic:
 // - does stage exist?
-// - state can't be started, failed, excluded or already skipped?
+// - state can't be started, excluded or already skipped?
 // - are all upstream dependencies finished or skipped?
 func (m *Mission) SkipStage(stageName string) (Response, error) {
 	if m.isComplete {
@@ -342,11 +342,11 @@ func (m *Mission) SkipStage(stageName string) (Response, error) {
 
 	// Check the state of the stage
 	switch s.State {
-	case ready:
+	case ready, failed:
 		s.State = skipped
 	case skipped, excluded, finished:
 		// this is allowed, but state will not be changed - mission logic should not be affected
-	case started, failed:
+	case started:
 		err := &StageChangeError{fmt.Sprintf("cannot skip stage '%v' because it has previously been %s", stageName, s.State)}
 		return Response{false, nil, m.isComplete}, err
 	}
@@ -418,13 +418,13 @@ func (m *Mission) ExcludeStage(stageName string) (Response, error) {
 
 func (m *Mission) tryExcludingStage(s *Stage) error {
 	switch s.State {
-	case ready, excluded:
+	case ready, failed:
 		s.State = excluded
 		return nil
-	case finished, skipped:
+	case finished, skipped, excluded:
 		// this is allowed, but state will not be changed - mission logic should not be affected
 		return nil
-	case started, failed:
+	case started:
 		err := &StageChangeError{fmt.Sprintf("cannot exclude stage '%v' because it is %s, not ready", s.Name, s.State)}
 		return err
 	}
