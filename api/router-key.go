@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"encoding/json"
@@ -97,12 +97,12 @@ func (a *API) ListKeys(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} model.Success
 // @Failure 404,500 {object} model.Error
 // @Router /api/v1/key [delete]
-func (a *API) DeleteKey(w http.ResponseWriter, r *http.Request) {
+func (a *API) deleteKey(w http.ResponseWriter, r *http.Request) {
 
 	key := r.Header.Get("x-access-key")
 
 	// Delete key extracted from header
-	err := a.db.DeleteKey(key)
+	err := a.DeleteKey(key)
 
 	if err != nil {
 		handleError(err, w)

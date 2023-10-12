@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"encoding/json"
@@ -60,7 +60,7 @@ func (a *API) initRouter() {
 	apiRouter.HandleFunc("/missions/{id}/stages/{name}", a.PostMissionStage).Methods("POST")
 	apiRouter.HandleFunc("/missions/{id}", a.GetMission).Methods("GET")
 	apiRouter.HandleFunc("/missions/{id}/report", a.GetMissionReport).Methods("GET")
-	apiRouter.HandleFunc("/missions/{id}", a.DeleteMission).Methods("DELETE")
+	apiRouter.HandleFunc("/missions/{id}", a.deleteMission).Methods("DELETE")
 	apiRouter.HandleFunc("/completed", a.GetCompletedMissions).Methods("GET")
 	apiRouter.HandleFunc("/logs", a.GetLogs).Methods("GET")
 
@@ -70,7 +70,7 @@ func (a *API) initRouter() {
 	apiKeyRouter := router.PathPrefix("/api/v1/key").Subrouter()
 	apiKeyRouter.Use(a.checkAdminPassword)
 	apiKeyRouter.HandleFunc("/all", a.ListKeys).Methods("GET")
-	apiKeyRouter.HandleFunc("", a.DeleteKey).Methods("DELETE")
+	apiKeyRouter.HandleFunc("", a.deleteKey).Methods("DELETE")
 	apiKeyRouter.HandleFunc("", a.PostKey).Methods("POST")
 	//apiKeyRouter.HandleFunc("/password", a.PostPassword).Methods("GET")  // TODO: route to change password
 

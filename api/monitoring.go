@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"encoding/json"
@@ -62,7 +62,7 @@ func (a *API) DeleteExpiredMissions() {
 			log.Infof("Found completed mission '%v'\n", missionId)
 
 			if a.missionCanBeDeleted(key, missionId) {
-				a.deleteMission(key, missionId)
+				a.DeleteMission(key, missionId)
 				deletedMissions++
 				log.Infof("Deleted '%v'\n", missionId)
 			} else {
@@ -87,7 +87,7 @@ func (a *API) DeleteExpiredMissions() {
 			for _, missionId := range missions {
 				log.Debugf("Found active mission '%v'\n", missionId)
 				if a.missionCanBeDeleted(key, missionId) {
-					a.deleteMission(key, missionId)
+					a.DeleteMission(key, missionId)
 					deletedMissions++
 					log.Infof("Deleted '%v'\n", missionId)
 				} else {

@@ -3,7 +3,7 @@ API routes for plans
 
 */
 
-package main
+package api
 
 import (
 	"encoding/json"

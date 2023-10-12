@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"encoding/json"
@@ -134,13 +134,13 @@ func (a *API) PostMission(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} model.Success
 // @Failure 404,500 {object} model.Error
 // @Router /api/v1/missions/{id} [delete]
-func (a *API) DeleteMission(w http.ResponseWriter, r *http.Request) {
+func (a *API) deleteMission(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 	missionId := vars["id"]
 	key := r.Header.Get("x-access-key") // key has been checked by checkKey middleware
 
-	a.deleteMission(key, missionId)
+	a.DeleteMission(key, missionId)
 	payload, _ := json.Marshal(model.Success{Message: "Deleted " + missionId})
 
 	a.ws <- message{key: key, Event: "missionDeleted", Content: []byte(missionId)}
