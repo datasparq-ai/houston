@@ -7,16 +7,14 @@ import (
 )
 
 type Config struct {
-	Port      string          `yaml:"port" env:"HOUSTON_PORT" env-default:"8000" json:"port"`
-	Redis     RedisConfig     `yaml:"redis" json:"redis"`
-	Password  string          `yaml:"password" env:"HOUSTON_PASSWORD" json:"password"`
-	Dashboard DashboardConfig `yaml:"dashboard" json:"dashboard"`
-	TLS       TLSConfig       `yaml:"tls" json:"tls"`
-	//MissionExpiry time.Duration   `yaml:"mission_expiry" env:"HOUSTON_MISSION_EXPIRY" env-default:"720h"` // 30 days
-	MissionExpiry time.Duration `yaml:"mission_expiry" env:"HOUSTON_MISSION_EXPIRY" env-default:"1s"`
-	//MemoryLimitMiB int64 `yaml:"memory_limit_mib" env:"HOUSTON_MEMORY_LIMIT_MIB" env-default:"1024"`
-	MemoryLimitMiB int64  `yaml:"memory_limit_mib" env:"HOUSTON_MEMORY_LIMIT_MIB" env-default:"0"`
-	Salt           string `json:"-"` // note: it is not recommended to set the salt yourself. It will be randomly generated
+	Port           string          `yaml:"port" env:"HOUSTON_PORT" env-default:"8000" json:"port"`
+	Redis          RedisConfig     `yaml:"redis" json:"redis"`
+	Password       string          `yaml:"password" env:"HOUSTON_PASSWORD" json:"password"`
+	Dashboard      DashboardConfig `yaml:"dashboard" json:"dashboard"`
+	TLS            TLSConfig       `yaml:"tls" json:"tls"`
+	MissionExpiry  time.Duration   `yaml:"mission_expiry" env:"HOUSTON_MISSION_EXPIRY" env-default:"720h"`     // 30 days
+	MemoryLimitMiB int64           `yaml:"memory_limit_mib" env:"HOUSTON_MEMORY_LIMIT_MIB" env-default:"3072"` // 3GiB
+	Salt           string          `json:"-"`                                                                  // note: it is not recommended to set the salt yourself. It will be randomly generated
 }
 
 type DashboardConfig struct {

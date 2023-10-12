@@ -157,10 +157,9 @@ func (d *RedisDatabase) Health() error {
 		return err
 	}
 	memoryUsage := value.([]interface{})[1].(int64)
-	fmt.Printf("Memory Usage (bytes): %v\n", memoryUsage)
 
 	if memoryUsage > (d.memoryLimitMiB * 1024 * 1024) {
-		return &MemoryUsageError{}
+		return &MemoryUsageError{memoryUsage, d.memoryLimitMiB * 1024 * 1024}
 	}
 
 	return nil

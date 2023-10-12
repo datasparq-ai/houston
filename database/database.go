@@ -1,5 +1,7 @@
 package database
 
+import "fmt"
+
 // Database represents the store of API Keys, Missions, and Plans in either Redis or a local in memory database
 // all database types should behave exactly the same. The schemas are described in docs/database_schema.md.
 type Database interface {
@@ -17,8 +19,10 @@ type Database interface {
 }
 
 type MemoryUsageError struct {
+	usage int64
+	limit int64
 }
 
 func (e *MemoryUsageError) Error() string {
-	return "Memory usage is above the safe limit"
+	return fmt.Sprintf("memory usage is above the safe limit: %v out of %v bytes used", e.usage, e.limit)
 }

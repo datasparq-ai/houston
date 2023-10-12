@@ -23,6 +23,7 @@ func demo(createCmd *cobra.Command) {
 
 	api := New(configPath)
 	go api.Run()
+	go api.Monitor()
 
 	time.Sleep(500 * time.Millisecond)
 

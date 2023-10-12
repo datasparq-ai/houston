@@ -103,5 +103,6 @@ func (d *LocalDatabase) DoTransaction(transactionFunc func(string) (string, erro
 }
 
 func (d *LocalDatabase) Health() error {
+	// not implemented for local database
 	return nil
 }
