@@ -20,12 +20,18 @@ func handleErrorResponse(responseBody []byte) error {
 	if err != nil {
 		return handleInvalidResponse(err)
 	}
-	switch errorResponse.Type {
-	case "model.KeyNotProvidedError":
+
+	// this case statement is the inverse of model.ErrorCode
+	switch errorResponse.Code {
+	case 572:
+		err = &model.TransactionFailedError{}
+	case http.StatusTooManyRequests:
+		err = &model.TooManyRequestsError{}
+	case http.StatusUnauthorized:
 		err = &model.KeyNotProvidedError{}
-	case "model.KeyNotFoundError":
+	case 470:
 		err = &model.KeyNotFoundError{}
-	case "model.PlanNotFoundError":
+	case http.StatusNotFound:
 		// extract plan name from error message
 		if strings.Count(errorResponse.Message, "'") == 2 {
 			planName := errorResponse.Message[strings.Index(errorResponse.Message, "'")+1 : strings.LastIndex(errorResponse.Message, "'")]
@@ -33,6 +39,10 @@ func handleErrorResponse(responseBody []byte) error {
 		} else {
 			err = &model.PlanNotFoundError{}
 		}
+	case http.StatusForbidden:
+		err = &model.BadCredentialsError{}
+	case http.StatusInternalServerError:
+		err = &model.InternalError{}
 	default:
 		err = fmt.Errorf(errorResponse.Message)
 	}

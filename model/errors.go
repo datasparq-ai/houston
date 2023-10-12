@@ -1,5 +1,29 @@
 package model
 
+import "net/http"
+
+// ErrorCode maps all Houston errors to unique codes for easy identification
+func ErrorCode(err error) int {
+	switch err.(type) {
+	case *TransactionFailedError:
+		return 572
+	case *TooManyRequestsError:
+		return http.StatusTooManyRequests
+	case *KeyNotProvidedError:
+		return http.StatusUnauthorized
+	case *KeyNotFoundError:
+		return 470
+	case *PlanNotFoundError:
+		return http.StatusNotFound
+	case *BadCredentialsError:
+		return http.StatusForbidden
+	case *InternalError:
+		return http.StatusInternalServerError
+	default:
+		return http.StatusBadRequest
+	}
+}
+
 type TransactionFailedError struct{}
 
 func (m *TransactionFailedError) Error() string {
@@ -36,4 +60,10 @@ type BadCredentialsError struct{}
 
 func (m *BadCredentialsError) Error() string {
 	return "Incorrect username/password."
+}
+
+type InternalError struct{}
+
+func (m *InternalError) Error() string {
+	return "Houston, we have a problem. There was an error in the API server when processing the request."
 }

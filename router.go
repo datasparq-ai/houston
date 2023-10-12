@@ -38,11 +38,15 @@ func (a *API) initRouter() {
 
 	router := mux.NewRouter().StrictSlash(true)
 	router.Use(rateLimit)
+	router.Use(logRequest)
+	router.Use(recovery)
 	go limiter.CleanUpIPs()
 
 	router.HandleFunc("/api/v1", a.GetStatus).Methods("GET")
 
 	apiRouter := router.PathPrefix("/api/v1").Subrouter()
+	//apiRouter.Use(rateLimit)
+	//apiRouter.Use(loggingMiddleware)
 	apiRouter.Use(a.checkKey)
 	apiRouter.HandleFunc("/plans/", a.GetPlans).Methods("GET")
 	apiRouter.HandleFunc("/plans", a.PostPlan).Methods("POST")
@@ -58,6 +62,7 @@ func (a *API) initRouter() {
 	apiRouter.HandleFunc("/missions/{id}/report", a.GetMissionReport).Methods("GET")
 	apiRouter.HandleFunc("/missions/{id}", a.DeleteMission).Methods("DELETE")
 	apiRouter.HandleFunc("/completed", a.GetCompletedMissions).Methods("GET")
+	apiRouter.HandleFunc("/logs", a.GetLogs).Methods("GET")
 
 	// note: a user can get the name of a key without the admin password, provided they have the key
 	apiRouter.HandleFunc("/key", a.GetKey).Methods("GET")
@@ -70,5 +75,7 @@ func (a *API) initRouter() {
 	//apiKeyRouter.HandleFunc("/password", a.PostPassword).Methods("GET")  // TODO: route to change password
 
 	a.router = router
+
+	log.Debug("Router initialised")
 
 }

@@ -31,10 +31,11 @@ func NewRedisDatabase(addr, password string, db int, memoryLimitMiB int64) *Redi
 	}
 }
 
-// CreateKey is used to initialise an API key. The key must not already exist
+// CreateKey does nothing when using Redis db
 func (d *RedisDatabase) CreateKey(key string) error {
-	err := d.client.Set(d.ctx, key+"|u", "0", 0).Err()
-	return err
+	//err := d.client.Set(d.ctx, key+"|u", "0", 0).Err()  // TODO: removed in feature/memory-monitoring - make sure we don't need it
+	//return err
+	return nil
 }
 
 // DeleteKey completely removes an API key and all associated plans and missions from the database

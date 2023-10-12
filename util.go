@@ -4,21 +4,22 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"github.com/datasparq-ai/houston/mission"
-	"github.com/datasparq-ai/houston/model"
 	"math/rand"
 	"net/http"
 	"strings"
+
+	"github.com/datasparq-ai/houston/mission"
+	"github.com/datasparq-ai/houston/model"
 )
 
-// reservedKeys can't be used as mission names
-var reservedKeys = []string{"u", "n", "a", "c"}
+// reservedKeys can't be used as mission names or keys
+var reservedKeys = []string{"u", "n", "a", "c", "m"}
 
 // letters contains all characters that can be used in generated API keys and the randomly generated salt
 var letters = []rune("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
-// these characters are not allowed in plan names or mission IDs
-var disallowedCharacters = []rune("| ,\n\r\t%&<>{}[]\\?;\"'`")
+// these characters are not allowed in keys, plan names or mission IDs
+var disallowedCharacters = "| ,\n\r\t%&<>{}[]\\?;\"'`"
 
 // used to create API keys and tokens
 func createRandomString(n int) string {
@@ -57,19 +58,17 @@ func NewMissionFromPlan(plan *model.Plan) *mission.Mission {
 
 // handleError writes an error http response given an error object
 func handleError(err error, w http.ResponseWriter) {
-	res := model.Error{Message: err.Error(), Type: strings.Replace(fmt.Sprintf("%T", err), "*", "", 1)}
-	payload, _ := json.Marshal(res)
-	switch err.(type) {
-	case *model.TransactionFailedError, *model.TooManyRequestsError:
-		w.WriteHeader(http.StatusTooManyRequests)
-	case *model.KeyNotFoundError, *model.PlanNotFoundError:
-		w.WriteHeader(http.StatusNotFound)
-	case *model.BadCredentialsError:
-		w.WriteHeader(http.StatusForbidden)
-	default:
-		w.WriteHeader(http.StatusBadRequest)
+	keyLog.Error(err)
 
+	res := model.Error{
+		Message: err.Error(),
+		Type:    strings.Replace(fmt.Sprintf("%T", err), "*", "", 1),
+		Code:    model.ErrorCode(err),
 	}
+
+	payload, _ := json.Marshal(res)
+
+	w.WriteHeader(res.Code)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(payload)
 }

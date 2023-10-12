@@ -2,11 +2,11 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/datasparq-ai/houston/model"
-	"github.com/gorilla/websocket"
-	"log"
 	"net/http"
 	"time"
+
+	"github.com/datasparq-ai/houston/model"
+	"github.com/gorilla/websocket"
 )
 
 type message struct {
@@ -118,7 +118,7 @@ func (a *API) initWebSocket() {
 		// upgrade from http to ws protocol
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			log.Println(err)
+			log.Error(err)
 			return
 		}
 
@@ -157,7 +157,7 @@ func (a *API) initWebSocket() {
 // reads from this goroutine.
 func (c *WebSocketClient) readPump() {
 	defer func() {
-		//log.Printf("CONNECTION CLOSED - %s\n", c.id)
+		log.Infof("CONNECTION CLOSED - %s\n", c.id)
 		c.hub.unregister <- c
 
 		c.conn.Close()
@@ -174,12 +174,12 @@ func (c *WebSocketClient) readPump() {
 		_, msg, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				//log.Printf("error: %v", err)
+				log.Infof("error: %v", err)
 			}
 			break
 		}
 
-		//log.Printf("MESSAGE %s - %s\n", c.id, msg)
+		log.Infof("MESSAGE %s - %s\n", c.id, msg)
 
 		c.hub.broadcast <- message{c.key, "notice", msg}
 	}

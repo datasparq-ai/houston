@@ -13,6 +13,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestMain(m *testing.M) {
@@ -126,9 +127,13 @@ func TestAPI_PostMissionStage(t *testing.T) {
 		t.Fatalf(`Didn't get an error when starting stage twice`)
 	}
 
+	start := time.Now()
 	_, err = c.FinishStage(missionId, "stage-1", false)
 	if err != nil {
 		t.Fatalf(`Could not finish stage`)
+	}
+	if td := time.Since(start); td > time.Millisecond*5 {
+		t.Fatalf("Finishing a stage took too long at %v", td)
 	}
 }
 
@@ -267,6 +272,9 @@ func TestAPI_UsePassword(t *testing.T) {
 	err = a.SetPassword("foobar1234")
 	if err != nil {
 		t.Fatalf("Got an error setting a valid password.")
+	}
+	if a.config.Password != hashPassword("foobar1234", a.config.Salt) {
+		t.Fatalf("Password not set correctly.")
 	}
 
 	go a.Run()

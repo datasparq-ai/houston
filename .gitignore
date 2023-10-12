@@ -6,4 +6,11 @@
 *.rdb
 
 # binaries
-houston
+./houston
+
+# logging output
+logs
+
+# vscode local environment files
+.vscode
+
