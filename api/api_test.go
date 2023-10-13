@@ -1,5 +1,6 @@
 /**
 Tests for the API. Each test creates a new API instance, key, and mission with the ID set to the name of the test.
+There are many more tests for API functionality in main_test.go, which tests both the API and the client in conjunction.
 */
 
 package api
@@ -32,11 +33,6 @@ func TestAPI_CreateKey(t *testing.T) {
 		t.Fatalf(`Could not delete key`)
 	}
 }
-
-// TODO: test creating and getting a mission
-//func TestAPI_GetMission(t *testing.T) {
-//
-//}
 
 func TestAPI_UsePassword(t *testing.T) {
 	a := New("")
