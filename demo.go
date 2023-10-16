@@ -6,6 +6,7 @@ import (
 	"github.com/datasparq-ai/houston/api"
 	"github.com/datasparq-ai/houston/model"
 	"github.com/spf13/cobra"
+	"math/rand"
 	"os"
 	"os/signal"
 	"syscall"
@@ -44,7 +45,12 @@ func demo(createCmd *cobra.Command) {
     {"name": "release-holddown-arms", "upstream": ["engine-thrust-ok"]},
     {"name": "umbilical-disconnected"},
     {"name": "liftoff", "upstream": ["release-holddown-arms", "umbilical-disconnected"]},
-    {"name": "tower-clearance-yaw-maneuver", "upstream": ["liftoff"]}
+    {"name": "tower-clearance-yaw-maneuver", "upstream": ["liftoff"]},
+    {"name": "pitch-and-roll-maneuver", "upstream": ["tower-clearance-yaw-maneuver"]},
+    {"name": "apex", "upstream": ["pitch-and-roll-maneuver"]},
+    {"name": "mach-one", "upstream": ["liftoff"]},
+    {"name": "outboard-engine-cutoff", "upstream": ["mach-one"]},
+    {"name": "iterative-guidance-mode", "upstream": ["pitch-and-roll-maneuver"]}
   ]
 }`)
 	var plan model.Plan
@@ -80,40 +86,47 @@ func demo(createCmd *cobra.Command) {
 
 	time.Sleep(2 * time.Second)
 	a.UpdateStageState("demo", "apollo-11", "engine-ignition", "started", false)
-	time.Sleep(1342 * time.Millisecond)
-	a.UpdateStageState("demo", "apollo-11", "engine-ignition", "finished", false)
-	a.UpdateStageState("demo", "apollo-11", "engine-thrust-ok", "started", false)
-	time.Sleep(1042 * time.Millisecond)
-	a.UpdateStageState("demo", "apollo-11", "engine-thrust-ok", "finished", false)
-	a.UpdateStageState("demo", "apollo-11", "umbilical-disconnected", "started", false)
-	a.UpdateStageState("demo", "apollo-11", "release-holddown-arms", "started", false)
-	time.Sleep(1820 * time.Millisecond)
-	a.UpdateStageState("demo", "apollo-11", "umbilical-disconnected", "finished", false)
-	time.Sleep(1820 * time.Millisecond)
-	a.UpdateStageState("demo", "apollo-11", "release-holddown-arms", "finished", false)
-	time.Sleep(1120 * time.Millisecond)
-	a.UpdateStageState("demo", "apollo-11", "liftoff", "started", false)
-	time.Sleep(1560 * time.Millisecond)
-	a.UpdateStageState("demo", "apollo-11", "liftoff", "finished", false)
-	a.UpdateStageState("demo", "apollo-11", "tower-clearance-yaw-maneuver", "started", false)
-	time.Sleep(3440 * time.Millisecond)
-	a.UpdateStageState("demo", "apollo-11", "tower-clearance-yaw-maneuver", "finished", false)
+	time.Sleep(1234 * time.Millisecond)
+	res, _ := a.UpdateStageState("demo", "apollo-11", "engine-ignition", "finished", false)
+	go continueMission(a, "demo", "apollo-11", res.Next)
 
-	fmt.Printf(">>> %[1]vhouston start%[2]v \u001B[1m-p apollo -i apollo-12%[2]v\n", s, e)
-	_, err = a.CreateMissionFromPlan("demo", "apollo", "apollo-12")
-	if err != nil {
-		panic(err)
-	}
+	time.Sleep(3 * time.Second)
 
-	fmt.Println("Created mission with ID 'apollo-12'")
+	go func() {
 
-	time.Sleep(1 * time.Second)
-	a.UpdateStageState("demo", "apollo-12", "engine-ignition", "started", false)
-	time.Sleep(1342 * time.Millisecond)
+		missionCount := 1
+		for missionCount < 30 {
+			time.Sleep(time.Duration(rand.Float32()*5000.0) * time.Millisecond)
+			//fmt.Printf(">>> %[1]vhouston start%[2]v \u001B[1m-p apollo -i apollo-12%[2]v\n", s, e)
+			missionId := fmt.Sprintf("apollo-%v", 11+missionCount)
+			_, err = a.CreateMissionFromPlan("demo", "apollo", missionId)
+			if err != nil {
+				panic(err)
+			}
+
+			time.Sleep(time.Duration(rand.Float32()*1000.0) * time.Millisecond)
+			a.UpdateStageState("demo", missionId, "engine-ignition", "started", false)
+			res, _ = a.UpdateStageState("demo", missionId, "engine-ignition", "finished", false)
+			go continueMission(a, "demo", missionId, res.Next)
+
+			missionCount++
+		}
+	}()
 
 	// keep the API running until the user exits
 	exitSignal := make(chan os.Signal)
 	signal.Notify(exitSignal, syscall.SIGINT, syscall.SIGTERM)
 	<-exitSignal
 
+}
+
+// continueMission completes every stage of a mission recursively, for demo purposes
+func continueMission(a *api.API, key, missionId string, stages []string) {
+	for _, stageName := range stages {
+		time.Sleep(time.Millisecond * time.Duration(rand.Float32()*500.0))
+		a.UpdateStageState("demo", missionId, stageName, "started", false)
+		time.Sleep(time.Millisecond * time.Duration(rand.Float32()*10000.0))
+		res, _ := a.UpdateStageState("demo", missionId, stageName, "finished", false)
+		go continueMission(a, key, missionId, res.Next)
+	}
 }
