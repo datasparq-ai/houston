@@ -4,7 +4,7 @@
 The Houston docker image can be used to quickly deploy the Houston API or run the command line tool.
 
 Official Houston docker images are available on Docker Hub: 
-- [datasparq/houston-redis:latest](https://hub.docker.com/r/datasparq/houston) (recommended)
+- [datasparq/houston-redis:latest](https://hub.docker.com/r/datasparq/houston-redis) (recommended)
 - [datasparq/houston:latest](https://hub.docker.com/r/datasparq/houston)
 
 ## Quickstart

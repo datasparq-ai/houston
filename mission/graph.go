@@ -68,8 +68,8 @@ func (g *Graph) CheckForIncontiguity(stages []*Stage) *Stage {
   return nil
 }
 
-// recursive - if upstream stage is skipped then we need to look at it's dependencies - all must be finished or skipped
-// if there are no upstream then always returns true
+// areUpstreamFinished is recursive. If upstream stage is skipped then we need to look at it's dependencies too; all
+// must be finished or skipped. If there are no upstream then always returns true
 func (g *Graph) areUpstreamFinished(stage *Stage) bool {
   for _, upstreamStage := range g.up[stage] {
     // all upstream stages must be finished or skipped

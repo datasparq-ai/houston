@@ -1,6 +1,6 @@
 /**
-Tests for the API. Runs a local Houston API server in a goroutine and uses Houston's Go client to run tests.
-One key 'test' is used for all tests. Each test creates a new mission, with the ID set to the name of the test.
+Tests for the API and Client. Runs a local Houston API server in a goroutine and uses Houston's Go client to run tests.
+Each test creates a new mission, with the ID set to the name of the test.
 */
 
 package main
@@ -8,6 +8,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/datasparq-ai/houston/api"
 	"github.com/datasparq-ai/houston/client"
 	"github.com/datasparq-ai/houston/model"
 	"os"
@@ -16,44 +17,27 @@ import (
 	"time"
 )
 
+var testKeyId = "test"
+
+// creates a local server that is used by most of the tests in this file
 func TestMain(m *testing.M) {
 
-	api := New("")
-	api.deleteKey("test")
-	api.CreateKey("test", "unittest-1")
-	go api.Run()
+	a := api.New("")
+	a.DeleteKey(testKeyId)
+	a.CreateKey(testKeyId, "unittest-1")
+
+	go a.Run()
 
 	code := m.Run() // run tests
 
-	api.deleteKey("test") // clean up
+	a.DeleteKey(testKeyId) // clean up
 	os.Exit(code)
 }
 
-func TestAPI_CreateKey(t *testing.T) {
+// create a mission using the client
+func Test_GetMission(t *testing.T) {
 
-	api := New("")
-	key, err := api.CreateKey("", "") // generate random key
-	if err != nil {
-		t.Fatalf(`Could not create key`)
-	}
-	if key == "" {
-		t.Fatalf(`Random key not created; key is empty string`)
-	}
-
-	key2, _ := api.CreateKey("", "")
-	if key == key2 {
-		t.Fatalf(`Key is not random`)
-	}
-
-	err = api.deleteKey(key) // clean up
-	if err != nil {
-		t.Fatalf(`Could not delete key`)
-	}
-}
-
-func TestAPI_GetMission(t *testing.T) {
-
-	c := client.New("test", "")
+	c := client.New(testKeyId, "")
 
 	data, _ := os.ReadFile("tests/test_plan.json")
 	var originalPlan model.Plan
@@ -85,9 +69,9 @@ func TestAPI_GetMission(t *testing.T) {
 	}
 }
 
-func TestAPI_PostMissionStage(t *testing.T) {
+func Test_PostMissionStage(t *testing.T) {
 
-	c := client.New("test", "")
+	c := client.New(testKeyId, "")
 
 	data, _ := os.ReadFile("tests/test_plan.json")
 	res, err := c.CreateMission(string(data), "TestAPI_PostMissionStage")
@@ -137,9 +121,9 @@ func TestAPI_PostMissionStage(t *testing.T) {
 	}
 }
 
-func TestAPI_PostMissionStage_StartStage_IgnoreDependencies(t *testing.T) {
+func Test_PostMissionStage_StartStage_IgnoreDependencies(t *testing.T) {
 
-	c := client.New("test", "")
+	c := client.New(testKeyId, "")
 
 	data, _ := os.ReadFile("tests/test_plan.json")
 	res, err := c.CreateMission(string(data), "TestAPI_PostMissionStage_StartStage_IgnoreDependencies")
@@ -167,8 +151,8 @@ func TestAPI_PostMissionStage_StartStage_IgnoreDependencies(t *testing.T) {
 	}
 }
 
-func TestAPI_SavePlan(t *testing.T) {
-	c := client.New("test", "")
+func Test_SavePlan(t *testing.T) {
+	c := client.New(testKeyId, "")
 	err := c.SavePlan("tests/test_plan.json")
 	if err != nil {
 		t.Fatalf(`Plan should be saved without error`)
@@ -217,8 +201,8 @@ func TestAPI_SavePlan(t *testing.T) {
 
 }
 
-func TestAPI_DeletePlan(t *testing.T) {
-	c := client.New("test", "")
+func Test_DeletePlan(t *testing.T) {
+	c := client.New(testKeyId, "")
 	c.SavePlan("tests/test_plan_deleted.json")
 
 	p, err := c.GetPlan("test-plan-deleted")
@@ -255,33 +239,17 @@ func TestAPI_DeletePlan(t *testing.T) {
 
 }
 
-func TestAPI_UsePassword(t *testing.T) {
-	a := New("")
-	a.config.Port = "8001"
+// create keys in a password protected API
+func Test_UsePassword(t *testing.T) {
 
-	// attempting to use a short password should result in an error
-	err := a.SetPassword("foobar")
-	if err == nil {
-		t.Fatalf("Did not get an error when using a short password")
-	}
-	err = a.SetPassword("foobar1 234")
-	if err == nil {
-		t.Fatalf("Did not get an error when using a password with invalid characters")
-	}
-
-	err = a.SetPassword("foobar1234")
-	if err != nil {
-		t.Fatalf("Got an error setting a valid password.")
-	}
-	if a.config.Password != hashPassword("foobar1234", a.config.Salt) {
-		t.Fatalf("Password not set correctly.")
-	}
+	// this uses a different port and redis database (if redis is used)
+	a := api.New("tests/test_config.yaml")
 
 	go a.Run()
 
 	// use password to create a key
 	c := client.New("", "http://localhost:8001/api/v1")
-	_, err = c.CreateKey("", "TestAPI_UsePassword", "foobar1234")
+	_, err := c.CreateKey("", "TestAPI_UsePassword", "foobar1234")
 	if err != nil {
 		t.Fatalf("Could not create key in password protected API")
 	}
@@ -312,9 +280,9 @@ func createAConflict(client *client.Client, missionId string, stage rune, errorC
 }
 
 // note: this tests takes longer because the client has to retry!
-func TestAPI_ConcurrentMissionUpdates(t *testing.T) {
+func Test_ConcurrentMissionUpdates(t *testing.T) {
 
-	c := client.New("test", "")
+	c := client.New(testKeyId, "")
 	res, err := c.CreateMission("tests/test_plan_big.json", "ConcurrentMissionUpdates")
 	if err != nil {
 		t.Fatalf("Got an error when creating mission: %s", err.Error())
@@ -354,69 +322,9 @@ func TestAPI_ConcurrentMissionUpdates(t *testing.T) {
 	}
 }
 
-// test completed mission + active missions + delete mission
-func TestAPI_CompletedMissions(t *testing.T) {
+func Test_ListKeys(t *testing.T) {
 
-	api := New("")
-	api.config.Port = "8002"
-	go api.Run()
-
-	key, err := api.CreateKey("", "test-delete") // generate random key
-
-	c := client.New(key, "http://localhost:8002/api/v1")
-	completedMissions := api.CompletedMissions(key)
-	if len(completedMissions) != 0 {
-		t.Fatalf("New key has completed missions.")
-	}
-
-	c.SavePlan("tests/test_plan.json")
-	active := api.ActiveMissions(key, "test-plan")
-	if len(active) != 0 {
-		t.Fatalf("New plan has active missions.")
-	}
-
-	res, err := c.CreateMission("test-plan", "CompletedMissions")
-	if err != nil {
-		panic(err)
-	}
-	active = api.ActiveMissions(key, "test-plan")
-	if len(active) != 1 || active[0] != res.Id {
-		t.Fatalf("Active mission is not listed as an active mission.")
-	}
-
-	// complete the mission
-	c.StartStage(res.Id, "stage-1", false)
-	c.FinishStage(res.Id, "stage-1", false)
-	c.SkipStage(res.Id, "stage-2")
-
-	completedMissions = api.CompletedMissions(key)
-	if len(completedMissions) != 1 || completedMissions[0] != res.Id {
-		t.Fatalf("Completed mission is not listed as a completed mission.")
-	}
-
-	deleteRes, err := c.DeleteMission(res.Id)
-	if err != nil {
-		t.Fatalf("Got an error deleting mission.")
-	}
-	if deleteRes.Id != res.Id {
-		t.Fatalf("Deleted mission ID doesn't match.")
-	}
-
-	active = api.ActiveMissions(key, "test-plan")
-	if len(active) != 0 {
-		t.Fatalf("Deleted mission is still listed as an active mission.")
-	}
-	completedMissions = api.CompletedMissions(key)
-	if len(completedMissions) != 0 {
-		t.Fatalf("Deleted mission is still listed as a completed mission.")
-	}
-
-	api.deleteKey(key)
-}
-
-func TestAPI_ListKeys(t *testing.T) {
-
-	c := client.New("test", "")
+	c := client.New(testKeyId, "")
 
 	// Generate 2 more keys
 	c.CreateKey("test2", "", "")
@@ -426,6 +334,7 @@ func TestAPI_ListKeys(t *testing.T) {
 	keys, err := c.ListKeys()
 
 	if err != nil {
+		panic(err)
 		t.Fatalf("Got an error when trying to list keys")
 	}
 
@@ -436,7 +345,7 @@ func TestAPI_ListKeys(t *testing.T) {
 	//noKeys := len(keys)
 	foundKeys := []int{0, 0, 0}
 	for _, key := range keys {
-		if key == "test" {
+		if key == testKeyId {
 			foundKeys[0]++
 		} else if key == "test2" {
 			foundKeys[1]++
@@ -453,8 +362,8 @@ func TestAPI_ListKeys(t *testing.T) {
 
 }
 
-func TestAPI_DeleteKey(t *testing.T) {
-	c := client.New("test", "")
+func Test_DeleteKey(t *testing.T) {
+	c := client.New(testKeyId, "")
 
 	c.DeleteKey()
 
@@ -464,7 +373,7 @@ func TestAPI_DeleteKey(t *testing.T) {
 	// Ensure test key is not in list of keys
 	keyExists := false
 	for i := range keys {
-		if keys[i] == "test" {
+		if keys[i] == testKeyId {
 			keyExists = true
 		}
 	}

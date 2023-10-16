@@ -3,14 +3,14 @@
 
 Houston is an open source, API based workflow orchestration tool.
 
-Documentation [./docs](./docs/README.md)  
+Documentation: [./docs](./docs/README.md)  
 Homepage: [callhouston.io](https://callhouston.io)
 
 This repo contains the API server, go client, and CLI.
 
 ### Install
 
-If you have [go](https://golang.org/doc/install) installed you can build the binary yourself and install with:
+If you have [go](https://golang.org/doc/install) installed you can install with:
 
 ```bash
 go install github.com/datasparq-ai/houston
@@ -36,7 +36,7 @@ running at this location.
 (in a separate shell) Create a new Houston key with ID = 'quickstart':
 
 ```bash
-houston create-key -i quickstart -n "Houston Quickstart"
+houston create-key --id quickstart --name "Houston Quickstart"
 ```
 
 Save this example plan to local file, e.g. 'example_plan.yaml':

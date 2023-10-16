@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"encoding/json"
@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"strconv"
-	"strings"
 )
 
 // GetMission godoc
@@ -135,36 +134,13 @@ func (a *API) PostMission(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} model.Success
 // @Failure 404,500 {object} model.Error
 // @Router /api/v1/missions/{id} [delete]
-func (a *API) DeleteMission(w http.ResponseWriter, r *http.Request) {
+func (a *API) deleteMission(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 	missionId := vars["id"]
 	key := r.Header.Get("x-access-key") // key has been checked by checkKey middleware
 
-	missionString, ok := a.db.Get(key, missionId)
-	if !ok {
-		return
-	}
-	var m model.Mission
-	// there is unlikely to be an error here, but if there is just skip removing mission from active list
-	err := json.Unmarshal([]byte(missionString), &m)
-	if err == nil {
-		// remove from active missions
-		activeStr, _ := a.db.Get(key, "a|"+m.Name)
-		activeStr = strings.Replace(","+activeStr+",", ","+missionId+",", ",", 1)
-		activeStr = strings.Trim(activeStr, ",")
-		a.db.Set(key, "a|"+m.Name, activeStr)
-	}
-
-	// remove from completed missions
-	completeString, ok := a.db.Get(key, "c")
-	completeString = strings.Replace(","+completeString+",", ","+missionId+",", ",", 1)
-	completeString = strings.Trim(completeString, ",")
-	a.db.Set(key, "c", completeString)
-
-	// delete mission
-	a.db.Delete(key, missionId)
-
+	a.DeleteMission(key, missionId)
 	payload, _ := json.Marshal(model.Success{Message: "Deleted " + missionId})
 
 	a.ws <- message{key: key, Event: "missionDeleted", Content: []byte(missionId)}

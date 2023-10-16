@@ -10,12 +10,13 @@ import (
 
 type RedisDatabase struct {
 	Database
-	client *redis.Client
-	ctx    context.Context
+	client         *redis.Client
+	ctx            context.Context
+	memoryLimitMiB int64
 }
 
 // NewRedisDatabase initialises a redis client using the default settings from ../config.go
-func NewRedisDatabase(addr, password string, db int) *RedisDatabase {
+func NewRedisDatabase(addr, password string, db int, memoryLimitMiB int64) *RedisDatabase {
 
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     addr,
@@ -24,13 +25,16 @@ func NewRedisDatabase(addr, password string, db int) *RedisDatabase {
 	})
 
 	return &RedisDatabase{
-		client: rdb,
-		ctx:    context.Background(),
+		client:         rdb,
+		ctx:            context.Background(),
+		memoryLimitMiB: memoryLimitMiB,
 	}
 }
 
 // CreateKey does nothing when using Redis db
 func (d *RedisDatabase) CreateKey(key string) error {
+	//err := d.client.Set(d.ctx, key+"|u", "0", 0).Err()  // TODO: removed in feature/memory-monitoring - make sure we don't need it
+	//return err
 	return nil
 }
 
@@ -143,4 +147,20 @@ func (d *RedisDatabase) DoTransaction(transactionFunc func(string) (string, erro
 	}
 
 	return err
+}
+
+// Health checks the health of the database. If the database is running out of space it will return an error here.
+// The amount of memory usage is checked using the MEMORY STATS command: https://redis.io/commands/memory-stats/
+func (d *RedisDatabase) Health() error {
+	value, err := d.client.Do(d.ctx, "MEMORY", "STATS").Result()
+	if err != nil {
+		return err
+	}
+	memoryUsage := value.([]interface{})[1].(int64)
+
+	if memoryUsage > (d.memoryLimitMiB * 1024 * 1024) {
+		return &MemoryUsageError{memoryUsage, d.memoryLimitMiB * 1024 * 1024}
+	}
+
+	return nil
 }

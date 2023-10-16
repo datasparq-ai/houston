@@ -1,6 +1,6 @@
-port: 8000
+port: 8001
 redis:
   addr: localhost:6379
   password: ""
-  db: 1
-password: foo
+  db: 2
+password: foobar1234

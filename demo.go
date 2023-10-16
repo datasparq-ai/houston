@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/datasparq-ai/houston/api"
 	"github.com/datasparq-ai/houston/model"
 	"github.com/spf13/cobra"
 	"os"
@@ -21,8 +22,9 @@ func demo(createCmd *cobra.Command) {
 	fmt.Printf("\u001B[37mstarting a local API server%[2]v\n", s, e)
 	fmt.Printf(">>> %[1]vhouston api%[2]v\n", s, e)
 
-	api := New(configPath)
-	go api.Run()
+	a := api.New(configPath)
+	go a.Run()
+	go a.Monitor()
 
 	time.Sleep(500 * time.Millisecond)
 
@@ -30,7 +32,7 @@ func demo(createCmd *cobra.Command) {
 	fmt.Printf(">>> %[1]vhouston create-key%[2]v \u001B[1m-i demo -n Demo%[2]v\n", s, e)
 	fmt.Printf(">>> %[1]vexport%[2]v \u001B[1mHOUSTON_KEY=demo%[2]v\n", s, e)
 
-	api.CreateKey("demo", "Demo")
+	a.CreateKey("demo", "Demo")
 	fmt.Println("Created key 'demo'")
 
 	// https://history.nasa.gov/SP-4029/Apollo_11i_Timeline.htm
@@ -55,7 +57,7 @@ func demo(createCmd *cobra.Command) {
 	fmt.Printf(">>> %[1]vcat%[2]v \u001B[1mpath/to/plan.json%[2]v\n", s, e)
 	fmt.Println(string(planBytes))
 	fmt.Printf(">>> %[1]vhouston save%[2]v \u001B[1m-p path/to/plan.json%[2]v\n", s, e)
-	err = api.SavePlan("demo", plan)
+	err = a.SavePlan("demo", plan)
 
 	if err != nil {
 		fmt.Println(err)
@@ -67,38 +69,38 @@ func demo(createCmd *cobra.Command) {
 	fmt.Printf("\u001B[37mcreating a new mission%[2]v\n", s, e)
 	fmt.Printf(">>> %[1]vhouston start%[2]v \u001B[1m-p apollo -i apollo-11%[2]v\n", s, e)
 
-	_, err = api.CreateMissionFromPlan("demo", "apollo", "apollo-11")
+	_, err = a.CreateMissionFromPlan("demo", "apollo", "apollo-11")
 	if err != nil {
 		panic(err)
 	}
 
 	fmt.Println("Created mission with ID 'apollo-11'")
 
-	fmt.Printf("\u001B[37mgo to http://localhost:%[3]v to view this mission on the dashboard using the key 'demo'%[2]v\n", s, e, api.config.Port)
+	fmt.Printf("\u001B[37mgo to http://localhost:8000 to view this mission on the dashboard using the key 'demo'%[2]v\n", s, e)
 
 	time.Sleep(2 * time.Second)
-	api.UpdateStageState("demo", "apollo-11", "engine-ignition", "started", false)
+	a.UpdateStageState("demo", "apollo-11", "engine-ignition", "started", false)
 	time.Sleep(1342 * time.Millisecond)
-	api.UpdateStageState("demo", "apollo-11", "engine-ignition", "finished", false)
-	api.UpdateStageState("demo", "apollo-11", "engine-thrust-ok", "started", false)
+	a.UpdateStageState("demo", "apollo-11", "engine-ignition", "finished", false)
+	a.UpdateStageState("demo", "apollo-11", "engine-thrust-ok", "started", false)
 	time.Sleep(1042 * time.Millisecond)
-	api.UpdateStageState("demo", "apollo-11", "engine-thrust-ok", "finished", false)
-	api.UpdateStageState("demo", "apollo-11", "umbilical-disconnected", "started", false)
-	api.UpdateStageState("demo", "apollo-11", "release-holddown-arms", "started", false)
+	a.UpdateStageState("demo", "apollo-11", "engine-thrust-ok", "finished", false)
+	a.UpdateStageState("demo", "apollo-11", "umbilical-disconnected", "started", false)
+	a.UpdateStageState("demo", "apollo-11", "release-holddown-arms", "started", false)
 	time.Sleep(1820 * time.Millisecond)
-	api.UpdateStageState("demo", "apollo-11", "umbilical-disconnected", "finished", false)
+	a.UpdateStageState("demo", "apollo-11", "umbilical-disconnected", "finished", false)
 	time.Sleep(1820 * time.Millisecond)
-	api.UpdateStageState("demo", "apollo-11", "release-holddown-arms", "finished", false)
+	a.UpdateStageState("demo", "apollo-11", "release-holddown-arms", "finished", false)
 	time.Sleep(1120 * time.Millisecond)
-	api.UpdateStageState("demo", "apollo-11", "liftoff", "started", false)
+	a.UpdateStageState("demo", "apollo-11", "liftoff", "started", false)
 	time.Sleep(1560 * time.Millisecond)
-	api.UpdateStageState("demo", "apollo-11", "liftoff", "finished", false)
-	api.UpdateStageState("demo", "apollo-11", "tower-clearance-yaw-maneuver", "started", false)
+	a.UpdateStageState("demo", "apollo-11", "liftoff", "finished", false)
+	a.UpdateStageState("demo", "apollo-11", "tower-clearance-yaw-maneuver", "started", false)
 	time.Sleep(3440 * time.Millisecond)
-	api.UpdateStageState("demo", "apollo-11", "tower-clearance-yaw-maneuver", "finished", false)
+	a.UpdateStageState("demo", "apollo-11", "tower-clearance-yaw-maneuver", "finished", false)
 
 	fmt.Printf(">>> %[1]vhouston start%[2]v \u001B[1m-p apollo -i apollo-12%[2]v\n", s, e)
-	_, err = api.CreateMissionFromPlan("demo", "apollo", "apollo-12")
+	_, err = a.CreateMissionFromPlan("demo", "apollo", "apollo-12")
 	if err != nil {
 		panic(err)
 	}
@@ -106,7 +108,7 @@ func demo(createCmd *cobra.Command) {
 	fmt.Println("Created mission with ID 'apollo-12'")
 
 	time.Sleep(1 * time.Second)
-	api.UpdateStageState("demo", "apollo-12", "engine-ignition", "started", false)
+	a.UpdateStageState("demo", "apollo-12", "engine-ignition", "started", false)
 	time.Sleep(1342 * time.Millisecond)
 
 	// keep the API running until the user exits
