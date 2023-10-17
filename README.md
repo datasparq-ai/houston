@@ -1,12 +1,30 @@
 
 # Houston
 
-Houston is an open source, API based workflow orchestration tool.
+Open source, API based workflow orchestration tool.
 
-Documentation: [./docs](./docs/README.md)  
-Homepage: [callhouston.io](https://callhouston.io)
+![Houston Flowchart](https://storage.googleapis.com/houston-static/images/houston-flowchart.gif)
+
+- Homepage: [callhouston.io](https://callhouston.io)
+- Quickstart guide: [houston-quickstart-python](https://github.com/datasparq-intelligent-products/houston-quickstart-python) 
+- Docs: [./docs](./docs/README.md)  
 
 This repo contains the API server, go client, and CLI.
+
+
+### Example Usage
+
+![Houston CLI](https://storage.googleapis.com/houston-static/images/houston-cli.gif)
+
+Start a local server with the default config: `houston api`
+
+Quickly run an end-to-end example workflow: `houston demo`
+
+Or use the Docker container: `docker run -p 8000:8000 datasparq/houston-redis demo`
+
+See the quickstart for a guide on how to create microservices and complete Houston missions using them:
+[quickstart](https://github.com/datasparq-intelligent-products/houston-quickstart-python)
+
 
 ### Install
 
@@ -16,59 +34,18 @@ If you have [go](https://golang.org/doc/install) installed you can install with:
 go install github.com/datasparq-ai/houston
 ```
 
-### Example Usage / Quickstart (1 minute)
 
-Use `houston demo` to quickly run an end-to-end example workflow:
+### Why Houston?
 
-```bash
-houston demo
-```
+Houston is a simpler, faster, and cheaper alternative to tools like Airflow.
 
-Alternatively, start a local Houston server with the default config:
+API based orchestration comes with 5 key advantages: 
+1. Code can run on serverless tools: lower cost, less maintenance, infinite scale 
+2. The server isn't under heavy load, so can handle hundreds of concurrent missions
+3. Pub/Sub message delivery is guaranteed, improving reliability
+4. Multiple workflows can share the same task runners, aiding collaboration
+5. Task runners can run anywhere in any language, allowing for rapid development with no vendor lock-in
 
-```bash
-houston api
-```
-
-The server is now running at `localhost:8000`. The Houston client will automatically look for Houston API servers 
-running at this location.
-
-(in a separate shell) Create a new Houston key with ID = 'quickstart':
-
-```bash
-houston create-key --id quickstart --name "Houston Quickstart"
-```
-
-Save this example plan to local file, e.g. 'example_plan.yaml':
-
-```yaml
-name: apollo
-stages:
-  - name: engine-ignition
-  - name: engine-thrust-ok
-    upstream:
-      - engine-ignition
-  - name: release-holddown-arms
-  - name: umbilical-disconnected
-  - name: liftoff
-    upstream:
-      - engine-thrust-ok
-      - release-holddown-arms
-      - umbilical-disconnected
-```
-
-Start a mission using this plan:
-
-```bash
-export HOUSTON_KEY=quickstart
-houston start --plan example_plan.yaml
-```
-
-Then go to http://localhost:8000. Enter your Houston key 'quickstart'.
-
-You've created a plan and started a mission. You now need a microservice to complete each of the stages in this mission.
-See the quickstart for a guide on how to create microservices and complete Houston missions using them:
-[quickstart](https://github.com/datasparq-intelligent-products/houston-quickstart-python)
 
 ### Contributing 
 
@@ -76,22 +53,3 @@ Please see the [contributing](./docs/contributing.md) guide.
 
 Development of Houston is supported by [Datasparq](https://datasparq.ai).
 
-### Run Unit Tests
-
-Test with development database:
-```bash
-go test ./...
-```
-
-Test with Redis database:
-```bash
-# remove any existing redis database
-rm dump.rdb
-# prevent go from using cached test results
-go clean -testcache
-# create redis db 
-redis-server &
-go test ./...
-# stop redis db
-kill $!
-```

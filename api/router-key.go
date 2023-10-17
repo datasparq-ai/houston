@@ -42,7 +42,7 @@ func (a *API) GetKey(w http.ResponseWriter, r *http.Request) {
 // @ID post-key
 // @Tags Key
 // @Param Body body model.Key true "The id, name and usage of key"
-// @Success 200 key string
+// @Success 200 string key
 // @Failure 404,500 {object} model.Error
 // @Router /api/v1/key [post]
 func (a *API) PostKey(w http.ResponseWriter, r *http.Request) {
