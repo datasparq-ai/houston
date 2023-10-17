@@ -2,8 +2,19 @@
 # Services
 
 Services carry out the tasks at each stage of a mission. These will typically be your own microservice deployments.
-Services should be defined in the plan in the `services` block with a name and a trigger method. 
-Each stage should reference a service which will run that stage.
+They should be defined in the plan within the `services` block with a name and a trigger method. Each stage should 
+reference a service which will run that stage.
+
+The microservices used in a plan can be hosted on any platform and written in any language/runtime. 
+For example an AWS Lambda running Python, Google Cloud Function running Go, Azure Function App running C#, and on 
+premise HTTP server running PHP could all be used within the same Houston plan.
+
+Services can be triggered via any method (HTTP POST request or webhook is fine). We recommend Pub/Sub messaging systems.
+
+Houston services don't have to be tied to a single plan or use case (and shouldn't be). The service should get all 
+the information about the task it's doing from the triggering message and plan parameters. This allows one service to
+be used in multiple plans, potentially by multiple teams across an organisation, or by authorised third parties.
+
 
 ### Standard Houston Services
 
