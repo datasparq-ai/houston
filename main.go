@@ -33,7 +33,7 @@ func main() {
 				Use:   "version",
 				Short: "Print the version number",
 				Run: func(c *cobra.Command, args []string) {
-					fmt.Println("v0.5.1")
+					fmt.Println("v0.6.0")
 				},
 			}
 			return
@@ -60,7 +60,7 @@ func main() {
 			var password = ""
 			createCmd = &cobra.Command{
 				Use:   "create-key",
-				Short: "Create a new API key. Requires admin password.",
+				Short: "Create a new API key (requires admin password)",
 				Run: func(c *cobra.Command, args []string) {
 					err := client.CreateKey(id, name, password)
 					if err != nil {
@@ -70,6 +70,24 @@ func main() {
 			}
 			createCmd.Flags().StringVarP(&id, "id", "i", "", "New API key value")
 			createCmd.Flags().StringVarP(&name, "name", "n", "", "Description for this key")
+			createCmd.Flags().StringVarP(&password, "password", "p", "", "API admin password")
+
+			return
+		}())
+
+		rootCmd.AddCommand(func() (createCmd *cobra.Command) {
+			var password = ""
+			createCmd = &cobra.Command{
+				Use:   "keys",
+				Short: "List all API keys (requires admin password)",
+				Run: func(c *cobra.Command, args []string) {
+
+					err := client.ListKeys(password)
+					if err != nil {
+						client.HandleCommandLineError(err)
+					}
+				},
+			}
 			createCmd.Flags().StringVarP(&password, "password", "p", "", "API admin password")
 
 			return

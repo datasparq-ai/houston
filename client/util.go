@@ -81,7 +81,7 @@ func HandleCommandLineError(err error) {
 		fmt.Println(
 			errorText + err.Error() +
 				" The API key provided with the 'HOUSTON_KEY' environment variable does not exist on this server." +
-				" See the docs for a guide on creating keys: " + end)
+				" See the docs for a guide on creating keys: https://github.com/datasparq-ai/houston/blob/main/docs/keys.md" + end)
 	case *model.PlanNotFoundError:
 		fmt.Println(errorText + err.Error() + end)
 	default:

@@ -13,13 +13,13 @@ import (
 )
 
 // reservedKeys can't be used as mission names or keys
-var reservedKeys = []string{"u", "n", "a", "c", "m"}
+var reservedKeys = []string{"u", "n", "a", "c", "m", "all"}
 
 // letters contains all characters that can be used in generated API keys and the randomly generated salt
 var letters = []rune("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 // these characters are not allowed in keys, plan names or mission IDs
-var disallowedCharacters = "| ,\n\r\t%&<>{}[]\\?;\"'`"
+var disallowedCharacters = "| ,\n\r\t%&<>{}[]\\?;\"'`:"
 
 // used to create API keys and tokens
 func createRandomString(n int) string {

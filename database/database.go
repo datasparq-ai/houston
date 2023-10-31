@@ -15,7 +15,6 @@ type Database interface {
 	List(key string, prefix string) ([]string, error)
 	DoTransaction(transactionFunc func(string) (string, error), key string, field string) error
 	Health() error
-	//ListMissions(key string) ([]string, error)
 }
 
 type MemoryUsageError struct {

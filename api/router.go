@@ -66,6 +66,11 @@ func (a *API) initRouter() {
 
 	// note: a user can get the name of a key without the admin password, provided they have the key
 	apiRouter.HandleFunc("/key", a.GetKey).Methods("GET")
+	apiRouter.HandleFunc("/key/{key}", a.GetKeyWebhook).Methods("GET").
+		MatcherFunc(func(r *http.Request, match *mux.RouteMatch) bool {
+			// prevent this handler from running in place of the ListKeys handler
+			return r.URL.Path != "/api/v1/key/all"
+		})
 
 	apiKeyRouter := router.PathPrefix("/api/v1/key").Subrouter()
 	apiKeyRouter.Use(a.checkAdminPassword)

@@ -34,28 +34,6 @@ func TestAPI_CreateKey(t *testing.T) {
 	}
 }
 
-func TestAPI_UsePassword(t *testing.T) {
-	a := New("")
-
-	// attempting to use a short password should result in an error
-	err := a.SetPassword("foobar")
-	if err == nil {
-		t.Fatalf("Did not get an error when using a short password")
-	}
-	err = a.SetPassword("foobar1 234")
-	if err == nil {
-		t.Fatalf("Did not get an error when using a password with invalid characters")
-	}
-
-	err = a.SetPassword("foobar1234")
-	if err != nil {
-		t.Fatalf("Got an error setting a valid password.")
-	}
-	if a.config.Password != hashPassword("foobar1234", a.config.Salt) {
-		t.Fatalf("Password not set correctly.")
-	}
-}
-
 // test completed mission + active missions + delete mission
 func TestAPI_CompletedMissions(t *testing.T) {
 

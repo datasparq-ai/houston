@@ -61,27 +61,38 @@ func logRequest(next http.Handler) http.Handler {
 	})
 }
 
-// checkKey runs before requests that require a key to check that the key exists in the API database.
+// KeyIsValid checks that a key is valid and exists in the API database.
+func (a *API) KeyIsValid(key string) error {
+	if key == "" {
+		return &model.KeyNotProvidedError{}
+	}
+	// prevent any requests from using reserved keys
+	for _, k := range reservedKeys {
+		if key == k {
+			return fmt.Errorf("key with id '%v' is not allowed because this value is reserved", key)
+		}
+	}
+	// check that key exists
+	_, ok := a.db.Get(key, "u")
+	if !ok {
+		return &model.KeyNotFoundError{}
+	}
+	return nil
+}
+
+// checkKey runs before requests that require a key in the header to check that the key is valid.
 func (a *API) checkKey(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		key := r.Header.Get("x-access-key")
-		if key == "" {
-			err := &model.KeyNotProvidedError{}
-			handleError(err, w)
-			return
+		key := ""
+		// the webhook route does not require a key in the header, because it's in the path
+		fmt.Println(r.URL.Path)
+		if strings.HasPrefix(r.URL.Path, "/api/v1/key/") {
+			key = strings.TrimPrefix(r.URL.Path, "/api/v1/key/")
+		} else {
+			key = r.Header.Get("x-access-key")
 		}
-		// prevent any requests from using reserved keys
-		for _, k := range reservedKeys {
-			if key == k {
-				err := fmt.Errorf("key with id '%v' is not allowed because this value is reserved", key)
-				handleError(err, w)
-				return
-			}
-		}
-		// check that key exists
-		_, ok := a.db.Get(key, "u")
-		if !ok {
-			err := &model.KeyNotFoundError{}
+		err := a.KeyIsValid(key)
+		if err != nil {
 			handleError(err, w)
 			return
 		}

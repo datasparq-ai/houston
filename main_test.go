@@ -331,7 +331,7 @@ func Test_ListKeys(t *testing.T) {
 	c.CreateKey("test3", "", "")
 
 	// Extract list of keys
-	keys, err := c.ListKeys()
+	keys, err := c.ListKeys("")
 
 	if err != nil {
 		panic(err)
@@ -365,10 +365,10 @@ func Test_ListKeys(t *testing.T) {
 func Test_DeleteKey(t *testing.T) {
 	c := client.New(testKeyId, "")
 
-	c.DeleteKey()
+	c.DeleteKey("")
 
 	// Extract list of keys
-	keys, _ := c.ListKeys()
+	keys, _ := c.ListKeys("")
 
 	// Ensure test key is not in list of keys
 	keyExists := false

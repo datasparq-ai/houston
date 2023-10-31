@@ -33,8 +33,6 @@ func NewRedisDatabase(addr, password string, db int, memoryLimitMiB int64) *Redi
 
 // CreateKey does nothing when using Redis db
 func (d *RedisDatabase) CreateKey(key string) error {
-	//err := d.client.Set(d.ctx, key+"|u", "0", 0).Err()  // TODO: removed in feature/memory-monitoring - make sure we don't need it
-	//return err
 	return nil
 }
 

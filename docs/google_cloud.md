@@ -124,3 +124,22 @@ The following would start a new mission:
 {"plan": "my-plan", "command": "start"}
 ```
 
+## Deployment on Google Compute Engine
+
+Houston can be easily deployed on Google Compute Engine with a container VM by using the Houston Docker container. See: [Docker](docker.md)
+
+There is also an official Houston Terraform module for Google Compute Engine: [houston/google](https://registry.terraform.io/modules/datasparq-ai/houston/google/latest) 
+
+### Viewing API Server Logs
+
+After deploying Houston as a container VM, SSH into the instance, by one of two methods:
+- visit https://console.cloud.google.com/compute/instances and click 'SSH'
+- use gcloud: `gcloud compute ssh houston`
+
+Once inside the VM:
+
+```bash
+cd /home/houston
+sudo chmod -R 777 logs
+cd logs
+```
