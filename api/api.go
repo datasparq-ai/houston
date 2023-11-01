@@ -195,10 +195,9 @@ func (a *API) CreateKey(key string, name string) (string, error) {
 	}
 
 	// check if key already exists
-	usage, exists := a.db.Get(key, "u")
+	currentName, exists := a.db.Get(key, "n")
 	if exists {
-		log.Debugf("Key already exists with usage: %v. Key name will be updated.", usage)
-
+		log.Debugf("Key already exists with name '%s'. Key name will be updated to '%s'.", currentName, name)
 	} else {
 
 		err := a.db.CreateKey(key)
@@ -208,12 +207,6 @@ func (a *API) CreateKey(key string, name string) (string, error) {
 
 		// initialise key usage
 		err = a.db.Set(key, "u", "0")
-		if err != nil {
-			return "", err
-		}
-
-		// initialise completed missions
-		err = a.db.Set(key, "c", "")
 		if err != nil {
 			return "", err
 		}
@@ -242,7 +235,7 @@ func (a *API) CreateKey(key string, name string) (string, error) {
 func (a *API) DeleteKey(key string) error {
 	err := a.db.DeleteKey(key)
 	if err == nil {
-		log.Infof("Deleted key with name '%s'", key)
+		log.Infof("Deleted key with id '%s'", key)
 	} else {
 		log.Errorf("Key deletion failed: %s", err)
 	}
@@ -303,6 +296,7 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 
 	if missionId == "" {
 		// if no id is provided, use the key's usage count
+		// TODO: usage is never incremented
 		usage, _ := a.db.Get(key, "u")
 		missionId = "m" + usage
 		keyLog.Debugf("MissionID not provided. ID used instead: %s", missionId)
@@ -350,23 +344,18 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 	m.Id = missionId
 	m.Start = time.Now()
 
-	// todo: this could only be a database connection error - these should be retried at least 3 times
+	// TODO: this could only be a database connection error - these should be retried at least 3 times
 	err = a.db.Set(key, m.Id, string(m.Bytes()))
 	if err != nil {
 		log.Warnf("User %s has encountered an error in CreateMissionFromPlan when updating database: %v", key, err)
 		return "", err
 	}
 
-	// add to active missions - this key may not exist if plan has never been created before
-	activeMissions, _ := a.db.Get(key, "a|"+m.Name)
-	if activeMissions != "" {
-		activeMissions += ","
-	}
-	activeMissions += m.Id
-	err1 := a.db.Set(key, "a|"+m.Name, activeMissions)
-	if err1 != nil {
-		log.Warnf("User %s has encountered an error in CreateMissionFromPlan when updating database: %v", key, err1)
-		return m.Id, err1 // TODO: how to recover from this err?
+	// add to active missions field (transactional) - this key may not exist if plan has never been created before
+	err = a.updateActiveOrCompletedMissions(key, "a", m.Name, []string{m.Id}, nil)
+	if err != nil {
+		log.Warnf("User with key '%s' has encountered an error in CreateMissionFromPlan when updating active missions. Error: %v", key, err)
+		return m.Id, err
 	}
 
 	a.ws <- message{key, "missionCreation", m.Bytes()}
@@ -374,6 +363,60 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 	keyLog.Infof("Mission with id '%v' has been successfully created", missionId)
 
 	return m.Id, nil
+}
+
+// updateActiveMissions adds and/or removes missions from the active mission string in a transaction. It will not
+// return an error if the missions provided already exist or do not exist respectively. `databaseField` must be one of
+// "a" for active or "c" for completed.
+func (a *API) updateActiveOrCompletedMissions(key string, databaseField string, planName string, missionsToAdd []string, missionsToRemove []string) error {
+
+	if databaseField != "a" && databaseField != "c" {
+		return nil
+	}
+	if databaseField == "a" {
+		databaseField += "|" + planName
+	}
+
+	txnFunc := func(activeMissions string) (string, error) {
+		var newList []string
+		activeList := strings.Split(activeMissions, ",")
+
+		// remove missions to be removed
+		for _, activeMission := range activeList {
+			for _, missionToRemove := range missionsToRemove {
+				if activeMission != missionToRemove {
+					newList = append(newList, activeMission)
+				}
+			}
+		}
+
+		// add all missions
+		for _, newMission := range missionsToAdd {
+			newList = append(newList, newMission)
+		}
+
+		return strings.Join(newList, ","), nil
+	}
+
+	// do transaction and retry if transaction fails up to 10 times
+	var err error
+	for attempts := 0; attempts < 10; attempts++ {
+		err = a.db.DoTransaction(txnFunc, key, databaseField)
+		if err != nil {
+			switch err.(type) {
+			case *model.TransactionFailedError:
+				keyLog.Debugf("Got 'TransactionFailedError' when updating the active missions. There may be too many active missions for this plan. This is attempt number %v.\n", attempts+1)
+				time.Sleep(10 * time.Millisecond * time.Duration((attempts+1)^2))
+				// retry the transaction
+			default:
+				break // error will be returned
+			}
+		} else {
+			break
+		}
+	}
+	return err
+
 }
 
 // ActiveMissions finds all missions for a plan. If plan doesn't exist then an empty list is returned.
@@ -478,10 +521,10 @@ func (a *API) UpdateStageState(key string, missionId string, stage string, state
 	// if the mission is complete, add it to the list of missions to be cleaned up
 	if res.IsComplete {
 		a.ws <- message{key, "missionCompleted", missionBytes}
-		completedList := append(a.CompletedMissions(key), missionId)
-		completedListBytes := strings.Join(completedList, ",")
-		a.db.Set(key, "c", completedListBytes)
 		keyLog.Infof("Mission %s is complete", missionId)
+		// this has to be transactional, so it could return an error, but this is very unlikely
+
+		err = a.updateActiveOrCompletedMissions(key, "c", "", []string{missionId}, nil)
 	}
 
 	return res, err
@@ -556,6 +599,8 @@ Loop:
 	return plans, err
 }
 
+// DeleteMission permanently deletes a mission from the database. If there are any errors these will be ignored to
+// prevent the server from crashing.
 func (a *API) DeleteMission(key string, missionId string) {
 
 	missionString, ok := a.db.Get(key, missionId)
@@ -565,19 +610,22 @@ func (a *API) DeleteMission(key string, missionId string) {
 	var m model.Mission
 	// there is unlikely to be an error here, but if there is just skip removing mission from active list
 	err := json.Unmarshal([]byte(missionString), &m)
-	if err == nil {
+
+	if err != nil {
+		log.Error("Error when deleting mission: failed to get mission: " + err.Error())
+	} else {
 		// remove from active missions
-		activeStr, _ := a.db.Get(key, "a|"+m.Name)
-		activeStr = strings.Replace(","+activeStr+",", ","+missionId+",", "", 1)
-		activeStr = strings.Trim(activeStr, ",")
-		a.db.Set(key, "a|"+m.Name, activeStr)
+		err2 := a.updateActiveOrCompletedMissions(key, "a", m.Name, nil, []string{missionId})
+		if err2 != nil {
+			log.Error("Error when deleting mission: failed to remove mission from active missions: " + err2.Error())
+		}
 	}
 
 	// remove from completed missions
-	completeString, ok := a.db.Get(key, "c")
-	completeString = strings.Replace(","+completeString+",", ","+missionId+",", "", 1)
-	completeString = strings.Trim(completeString, ",")
-	a.db.Set(key, "c", completeString)
+	err3 := a.updateActiveOrCompletedMissions(key, "c", "", nil, []string{missionId})
+	if err3 != nil {
+		log.Error("Error when deleting mission: failed to remove mission from completed missions: " + err3.Error())
+	}
 
 	// delete mission
 	a.db.Delete(key, missionId)

@@ -28,11 +28,14 @@ See the quickstart for a guide on how to create microservices and complete Houst
 
 ### Install
 
+You can download the binary from the [releases](https://github.com/datasparq-ai/houston/releases/) page.
+
 If you have [go](https://golang.org/doc/install) installed you can install with:
 
 ```bash
-go install github.com/datasparq-ai/houston
+go install github.com/datasparq-ai/houston@latest
 ```
+
 
 
 ### Why Houston?

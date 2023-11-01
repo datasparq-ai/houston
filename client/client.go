@@ -26,6 +26,16 @@ func New(key string, baseUrl string) Client {
 
 	if key == "" {
 		key = os.Getenv("HOUSTON_KEY")
+		// if key is a valid URI that contains the baseUrl and the key
+		if strings.HasPrefix(key, "http://") || strings.HasPrefix(key, "https://") {
+			splitKey := strings.Split(key, "/key/")
+			if len(splitKey) != 2 {
+				fmt.Printf("Key has an invalid format. Expected format: '{base URL}/key/{key ID}'.\n")
+				os.Exit(1)
+			}
+			baseUrl = splitKey[0]
+			key = splitKey[1]
+		}
 	}
 
 	if baseUrl == "" {
@@ -197,15 +207,23 @@ func (client *Client) ListPlans() ([]string, error) {
 	return plans, err
 }
 
-func (client *Client) ListKeys() ([]string, error) {
+func (client *Client) ListKeys(password string) ([]string, error) {
 	var keys []string
+	if password != "" {
+		client.Auth.Username = "admin"
+		client.Auth.Password = password
+	}
 	resp := client.get("/key/all")
 	err := parseResponse(resp, &keys)
 	return keys, err
 }
 
-func (client *Client) DeleteKey() error {
+func (client *Client) DeleteKey(password string) error {
 	var success model.Success
+	if password != "" {
+		client.Auth.Username = "admin"
+		client.Auth.Password = password
+	}
 	resp := client.delete("/key")
 	err := parseResponse(resp, &success)
 	return err

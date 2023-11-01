@@ -2,7 +2,9 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/datasparq-ai/houston/model"
+	"github.com/gorilla/mux"
 	"io"
 	"net/http"
 )
@@ -34,8 +36,31 @@ func (a *API) GetKey(w http.ResponseWriter, r *http.Request) {
 	w.Write(keyBytes)
 }
 
-// PostKey is used to create a new key. The request does not need to contain a body if a random key should be generated.
-// the newly created key is returned as bytes.
+// TODO: test this in the swagger UI
+
+// GetKeyWebhook godoc
+// @Summary Redirect to the dashboard UI and auto sign in with this key
+// @Description Handles a GET request using the full base URL + key URL, i.e. "https://houston.example.com/api/v1/key/myhoustonkey".
+// Redirects to the dashboard with the key as a parameter to automatically sign in with that key.
+// @ID get-key-webhook
+// @Tags Key
+// @Param key path string true "Houston Key ID"
+// @Success 200 {object} model.Success
+// @Failure 404,500 {object} model.Error
+// @Router /api/v1/key [get]
+func (a *API) GetKeyWebhook(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	key := vars["key"]
+
+	userAgent := r.UserAgent()
+	fmt.Printf("UserAgent:: %s", userAgent)
+
+	// key has been checked by checkKey middleware
+
+	http.Redirect(w, r, fmt.Sprintf("/?key=%v", key), http.StatusMovedPermanently)
+}
+
+// PostKey creates a new key.
 // PostKey godoc
 // @Summary Create a new key.
 // @Description The request does not need to contain a body if a random key should be generated. The newly created key is returned as bytes.

@@ -2,7 +2,6 @@ package database
 
 import (
 	"fmt"
-	"github.com/datasparq-ai/houston/model"
 	"strings"
 	"sync"
 )
@@ -89,12 +88,12 @@ func (d *LocalDatabase) DoTransaction(transactionFunc func(string) (string, erro
 	d.mux[key].Lock()
 	defer d.mux[key].Unlock()
 
-	value, ok := d.Get(key, field)
+	// if field doesn't exist, we will continue with value = ""
+	value, _ := d.Get(key, field)
+
 	var err error
-	if !ok {
-		return &model.KeyNotFoundError{}
-	}
 	value, err = transactionFunc(value)
+
 	if err != nil {
 		return err
 	}

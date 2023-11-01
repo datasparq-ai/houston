@@ -82,7 +82,7 @@ func demo(createCmd *cobra.Command) {
 
 	fmt.Println("Created mission with ID 'apollo-11'")
 
-	fmt.Printf("\u001B[37mgo to http://localhost:8000 to view this mission on the dashboard using the key 'demo'%[2]v\n", s, e)
+	fmt.Printf("\u001B[37mgo to http://localhost:8000?key=demo to view this mission on the dashboard using the key 'demo'%[2]v\n", s, e)
 
 	time.Sleep(2 * time.Second)
 	a.UpdateStageState("demo", "apollo-11", "engine-ignition", "started", false)
