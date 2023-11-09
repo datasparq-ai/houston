@@ -147,6 +147,7 @@ func main() {
 				},
 			}
 			createCmd.Flags().String("config", "", "path to a config file")
+			createCmd.Flags().Bool("stress-test", false, "activate stress test with 500+ missions running at the same time")
 			return
 		}())
 
