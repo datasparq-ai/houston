@@ -15,7 +15,7 @@ Redis Schema:
 <api key>|p|<plan-name>:             # plan, stored as JSON string, identical to mission without stage timings
   name: "apollo"                       # plan name
   stages: []                           # list of stages
-<api key>|a|<plan-name>: m1,m2,m3    # active, list of active mission IDs (strings) for a plan
+<api key>|a|<plan-name>: m1,m2,m3    # active, list of mission IDs (strings) for a plan, which get removed when deleted
 <api key>|<mission id>:              # mission, stored as json string, made as small as possible
   n: apollo                            # name (plan name)
   i: <mission_id>                      # id
