@@ -5,6 +5,21 @@ Services carry out the tasks at each stage of a mission. These will typically be
 They should be defined in the plan within the `services` block with a name and a trigger method. Each stage should 
 reference a service which will run that stage.
 
+Service definitions within plans look like this:
+
+```yaml
+name: my-plan
+services:
+  - name: my-service
+    trigger:
+      method: pubsub
+      topic: projects/my-gcp-project/topics/topic-for-stage  # this is a Google Cloud Pub/Sub topic ID
+  - name: my-other-service
+    trigger:
+      method: http
+      url: https://example.com/api/houston
+```
+
 The microservices used in a plan can be hosted on any platform and written in any language/runtime. 
 For example an AWS Lambda running Python, Google Cloud Function running Go, Azure Function App running C#, and on 
 premise HTTP server running PHP could all be used within the same Houston plan.
@@ -96,5 +111,3 @@ For more examples, see:
 
 All trigger methods are described in [Service Trigger Methods](./service_trigger_methods.md), along with the required 
 service definition for each trigger method.
-
-

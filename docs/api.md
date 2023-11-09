@@ -29,6 +29,11 @@ for more information on deploying an API server.
 
 Keys are used to authenticate with the API. We recommend using one key per project/environment.
 
+Keys have the following attributes:
+- name `string`: A friendly name for the key, e.g. "My Project"
+- id `string`: Unique id for the key which doubles as the API key that must be provided when creating plans or missions on this key
+
+A Key can have many [plans](./plans.md) and missions associated with it, but a plan can only have one key.
 
 ### Create a Key
 
@@ -46,3 +51,4 @@ If you prefer to choose the key ID yourself:
 houston create-key --name "My New Project" --id foobar1234
 ```
 
+Note: You should never use short, easily guessable key IDs if your Houston server is hosted publicly. 

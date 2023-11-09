@@ -4,7 +4,7 @@
 ### Quick links
 
 - Home: [callhouston.io](https://callhouston.io)
-- Quickstart: [Python](https://github.com/datasparq-intelligent-products/houston-quickstart-python) (15 minutes), [video](todo) [coming soon]
+- Quickstart: [Python](https://github.com/datasparq-intelligent-products/houston-quickstart-python) (15 minutes), [video](_) [coming soon]
 - Community: [Twitter](https://twitter.com/callhouston_io)
 - Contributing
   - [Contributing Guide](./contributing.md)
@@ -14,6 +14,10 @@
 ### Articles
 
 [Concepts](concepts.md) (start here!)
+
+[Plans](plans.md)
+- [Stages](plans.md#stages)
+- [Missions](plans.md#missions)
 
 [Services](services.md)
 - [Commands](commands.md)
@@ -25,9 +29,9 @@
 - [Config](config.md)
 - [Docker](docker.md)
 - [Database Schema](database_schema.md)
+- [Transport Layer Security](./tls.md)
 - [Demo Mode](demo_mode.md)
 - [Websocket](websocket.md)
-- [Transport Layer Security (TLS) / SSL / HTTPS](./tls.md)
 - [Developer Guide](developer_guide.md)
   - [Unit Tests](developer_guide.md#run-unit-tests)
 - [API Schema (swagger.json)](https://storage.googleapis.com/houston-static/swagger.json)

@@ -9,13 +9,23 @@ for details on the required fields.
 
 | Method Name      | Required Fields  | Python Client                          | Go Client |
 |------------------|------------------|----------------------------------------|-----------|
-| google/pubsub    | topic            | yes (requires `houston-client[gcp]`)   |           |
-| azure/event-grid | topic, topic_key | yes (requires `houston-client[azure]`) |           |
-| http*            | url              | yes                                    |           |
+| google/pubsub    | topic            | yes (requires `houston-client[gcp]`)   | no        |
+| azure/event-grid | topic, topic_key | yes (requires `houston-client[azure]`) | no        |
+| http             | url              | yes                                    | no        |
 
 *HTTP triggers are not recommended. 
 
-### Google Cloud Pub/Sub Trigger
+Some triggers support different types of authentication:
+
+| Method Name    | Auth name        | Required auth fields                                                                   | Python Client                | Go Client  |
+|----------------|------------------|----------------------------------------------------------------------------------------|------------------------------|------------|
+| http           | bearer           | token `string`: the identity token                                                     | yes (added in version 1.4.0) | no         |
+| http (planned) | basic (planned)  | username `string`: account username <br> password `string`: account password           | no                           | no         |
+| http (planned) | apikey (planned) | key `string`: the API key <br> name `string`: the header name to use, e.g. "X-API-KEY" | no                           | no         |
+
+
+
+## Google Cloud Pub/Sub Trigger
 
 The two examples below are equivalent; method can be either `pubsub` or `google/pubsub`, topic can contain project or
 the project can be provided separately. 
@@ -34,7 +44,7 @@ the project can be provided separately.
 ```
 
 
-### Microsoft Azure Event Grid Trigger
+## Microsoft Azure Event Grid Trigger
 
 [Event Grid](https://docs.microsoft.com/en-us/azure/event-grid/overview)
 
@@ -52,9 +62,18 @@ stages:
   # stages go here
 ```
 
-##### HTTP Trigger
+## HTTP / HTTPS Trigger
 
-HTTP triggers use HTTP POST requests.
+HTTP triggers use HTTP or HTTPS POST requests. Optionally, they can also require authentication (see below).
+
+If a service is triggered via HTTP, a response should be returned immediately so that the mission can be carried out
+asynchronously. In order to ensure that HTTP trigger requests never block the triggering service, the Houston client
+will 'fire-and-forget' the request. This means that the response is always ignored. This can potentially cause issues
+where unsuccessful requests aren't noticed.
+
+It is recommended to use a messaging service such as Google Pub/Sub, which has guaranteed delivery, instead of HTTP.
+
+An HTTP triggered service with no authentication could look like the following:
 
 ```yaml
 name: my-plan
@@ -80,9 +99,32 @@ The houston client adds the following request body when triggering via an HTTP P
 }
 ```
 
-If a service is triggered via HTTP, a response should be returned immediately so that the mission can be carried out 
-asynchronously. In order to ensure that HTTP trigger requests never block the triggering service, the Houston client 
-will 'fire-and-forget' the request. This means that the response is always ignored. This can potentially cause issues 
-where unsuccessful requests aren't noticed. 
+### HTTP Bearer Auth
 
-It is recommended to use a messaging service such as Google Pub/Sub, which has guaranteed delivery, instead of HTTP.
+Bearer auth for HTTP triggers is currently only supported in the Python client. 
+To use Bearer auth, add `auth: bearer` to the service definition:
+
+```yaml
+name: my-plan
+
+services:
+  - name: my-service
+    trigger: 
+      method: http
+      url: http://example.com/my-api/do-task
+      auth: bearer
+
+stages:
+  # stages go here
+```
+
+Any service that now wishes to trigger this service (including itself) now needs to provide a bearer token when making 
+the request. This is done by providing the token within the `auth` object when initialising the Houston client:
+
+```python
+token = get_token()  # generate the token
+
+auth = {
+  "my-servce": { "token": token },
+}
+```

@@ -5,16 +5,16 @@ Houston is an open source, API based workflow orchestration tool.
 
 Running a workflow with Houston involves the following components: 
 
-- Houston API: Orchestrates the services and serves the dashboard UI
+- [Houston API](./api.md): Orchestrates the services and serves the dashboard UI
 - [Services](./services.md): Microservices that execute stages and communicate with the API using the Houston client
 - Messaging System: The tool (of the user's choice) that triggers each microservice to carry out a stage. These can be Pub/Sub messages or simple HTTP requests.
 
 A Houston workflow is made up of the following concepts:
 
-- Key: Used to authenticate with the API. We recommend using one key per project/environment
-- Plan: The workflow/DAG definition. Can be defined in a YAML of JSON file, uploaded to the API, and referred to by name
-- Stages: These make up the plan, each runs on a service
-- Missions: Individual runs of a plan
+- [Key](./api.md#keys): Used to authenticate with the API. We recommend using one key per project/environment
+- [Plan](./plans.md): The workflow/DAG definition. Can be defined in a YAML of JSON file, uploaded to the API, and referred to by name
+- [Stages](./plans.md#stages): These make up the plan, each runs on a service
+- [Missions](./plans.md#missions): Individual runs of a plan
 
 
 ## Architecture
@@ -49,4 +49,4 @@ A publisher/subscriber messaging system (such as Google Pub/Sub or Kafka) is use
 
 ---
 
-Read Next: [Services](./services.md)
+Read Next: [Plans](./plans.md)
