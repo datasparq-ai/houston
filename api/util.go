@@ -7,10 +7,13 @@ import (
 	"math/rand"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/datasparq-ai/houston/mission"
 	"github.com/datasparq-ai/houston/model"
 )
+
+var random = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 // reservedKeys can't be used as mission names or keys
 var reservedKeys = []string{"u", "n", "a", "c", "m", "all"}
@@ -25,7 +28,7 @@ var disallowedCharacters = "| ,\n\r\t%&<>{}[]\\?;\"'`:"
 func createRandomString(n int) string {
 	b := make([]rune, n)
 	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
+		b[i] = letters[random.Intn(len(letters))]
 	}
 	return string(b)
 }

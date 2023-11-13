@@ -4,6 +4,8 @@
 Houston plans are definitions of workflows. They are represented in YAML or JSON. Multiple plans can be associated with
 one key.
 
+Plans must be a valid directed acyclic graphs (DAG), meaning it can't have any loops, and all stages must be connected.
+
 Plan definitions have the following attributes:
 - name `string`: Name of the plan
 - services `[]Service`: (optional) List of services used by the plan, see [Services](./services.md)
@@ -19,10 +21,6 @@ services:
     trigger:
       method: pubsub
       topic: topic-for-stage
-  - name: my-other-service
-    trigger:
-      method: http
-      url: https://example.com/api/houston
 
 stages:
   - name: blastoff
@@ -30,10 +28,14 @@ stages:
     params:
       my_param: foo  
   - name: main-engine-cutoff
-    service: my-other-service
+    service: my-service
     upstream:
       - blastoff
 ```
+
+This creates a plan with two stages connected in a straight line. 'blastoff' is upstream of 'main-engine-cutoff', 
+meaning 'blastoff' must finish before 'main-engine-cutoff' can start. 'blastoff' has no dependencies and so can start
+at any time.
 
 Plans should be 'saved' using the Houston client. Saved plans can be referenced by name when starting a mission.
 

@@ -50,13 +50,7 @@ func (a *API) GetKey(w http.ResponseWriter, r *http.Request) {
 // @Router /api/v1/key [get]
 func (a *API) GetKeyWebhook(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	key := vars["key"]
-
-	userAgent := r.UserAgent()
-	fmt.Printf("UserAgent:: %s", userAgent)
-
-	// key has been checked by checkKey middleware
-
+	key := vars["key"] // key has been checked by checkKey middleware
 	http.Redirect(w, r, fmt.Sprintf("/?key=%v", key), http.StatusMovedPermanently)
 }
 

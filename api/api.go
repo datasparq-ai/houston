@@ -9,7 +9,6 @@ import (
 	"github.com/datasparq-ai/houston/model"
 	"github.com/gorilla/mux"
 	"golang.org/x/crypto/acme/autocert"
-	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -27,9 +26,9 @@ type API struct {
 	protocol string            // this is set to either 'http' or 'https' depending on config.TLSConfig
 }
 
-// New creates the Houston API object.
+// New creates an instance of the Houston API object.
 // It will create or connect to a database depending on the settings in the config file.
-// local db will only persist while program is running.
+// local db will only persist while the program is running.
 func New(configPath string) *API {
 	initLog()
 
@@ -379,14 +378,19 @@ func (a *API) updateActiveOrCompletedMissions(key string, databaseField string, 
 
 	txnFunc := func(activeMissions string) (string, error) {
 		var newList []string
-		activeList := strings.Split(activeMissions, ",")
 
-		// remove missions to be removed
-		for _, activeMission := range activeList {
-			for _, missionToRemove := range missionsToRemove {
-				if activeMission != missionToRemove {
-					newList = append(newList, activeMission)
+		if activeMissions != "" {
+			activeList := strings.Split(activeMissions, ",")
+
+			// remove missions to be removed
+		Loop:
+			for _, activeMission := range activeList {
+				for _, missionToRemove := range missionsToRemove {
+					if activeMission == missionToRemove {
+						continue Loop
+					}
 				}
+				newList = append(newList, activeMission)
 			}
 		}
 
@@ -416,7 +420,6 @@ func (a *API) updateActiveOrCompletedMissions(key string, databaseField string, 
 		}
 	}
 	return err
-
 }
 
 // ActiveMissions finds all missions for a plan. If plan doesn't exist then an empty list is returned.
@@ -425,7 +428,8 @@ func (a *API) ActiveMissions(key string, plan string) []string {
 	if missions == "" {
 		return []string{}
 	}
-	return strings.Split(missions, ",")
+	missionsList := strings.Split(missions, ",")
+	return missionsList
 }
 
 // AllActiveMissions finds all missions in the database for the key provided.
@@ -542,6 +546,7 @@ func (a *API) CompletedMissions(key string) []string {
 }
 
 // SavePlan stores a new plan in the database if that plan is valid. Current behaviour is to overwrite existing plans.
+// The 'active' key for the plan, and any existing missions, will be unaffected if the plan already exists.
 func (a *API) SavePlan(key string, plan model.Plan) error {
 
 	// convert plan to mission for validation of graph only
@@ -553,12 +558,8 @@ func (a *API) SavePlan(key string, plan model.Plan) error {
 
 	planBytes, _ := json.Marshal(plan)
 	keyLog.Infof("Converted Plan '%s' to Mission", plan.Name)
-	p, _ := a.db.Get(key, "p|"+plan.Name)
 	err = a.db.Set(key, "p|"+plan.Name, string(planBytes))
-	// if plan already exists, do not re-create the 'active' key
-	if p == "" {
-		err = a.db.Set(key, "a|"+plan.Name, "")
-	}
+
 	if err != nil {
 		keyLog.Errorf("Error when saving plan to database: %v", err)
 		log.Warnf("User %s encountered error when saving plan to database: %v", key, err)
@@ -580,6 +581,7 @@ func (a *API) ListPlans(key string) ([]string, error) {
 
 	keyLog.Debugf("Found %v saved plans", len(plans))
 
+	// find plans that aren't saved, but have missions associated
 	activePlans, err := a.db.List(key, "a|")
 	keyLog.Debugf("Found %v active plans", len(activePlans))
 
@@ -737,8 +739,4 @@ func (a *API) Run() {
 		panic(err)
 	}
 
-}
-
-func init() {
-	rand.Seed(time.Now().UnixNano()) // change random seed
 }

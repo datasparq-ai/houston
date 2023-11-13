@@ -16,6 +16,14 @@ import (
 // demo creates a new API instance and runs demonstration missions
 func demo(createCmd *cobra.Command) {
 	configPath, _ := createCmd.Flags().GetString("config")
+	stressTest, _ := createCmd.Flags().GetBool("stress-test")
+
+	missionsToRun := 30
+	var timeBetweenMissions float32 = 5000.0
+	if stressTest {
+		missionsToRun = 500
+		timeBetweenMissions = 5.0
+	}
 
 	s := "\u001B[1;38;2;58;145;172m"
 	e := "\u001B[0m"
@@ -95,8 +103,8 @@ func demo(createCmd *cobra.Command) {
 	go func() {
 
 		missionCount := 1
-		for missionCount < 30 {
-			time.Sleep(time.Duration(rand.Float32()*5000.0) * time.Millisecond)
+		for missionCount < missionsToRun {
+			time.Sleep(time.Duration(rand.Float32()*timeBetweenMissions) * time.Millisecond)
 			//fmt.Printf(">>> %[1]vhouston start%[2]v \u001B[1m-p apollo -i apollo-12%[2]v\n", s, e)
 			missionId := fmt.Sprintf("apollo-%v", 11+missionCount)
 			_, err = a.CreateMissionFromPlan("demo", "apollo", missionId)
@@ -104,7 +112,7 @@ func demo(createCmd *cobra.Command) {
 				panic(err)
 			}
 
-			time.Sleep(time.Duration(rand.Float32()*1000.0) * time.Millisecond)
+			time.Sleep(time.Duration(rand.Float32()*timeBetweenMissions/5) * time.Millisecond)
 			a.UpdateStageState("demo", missionId, "engine-ignition", "started", false)
 			res, _ = a.UpdateStageState("demo", missionId, "engine-ignition", "finished", false)
 			go continueMission(a, "demo", missionId, res.Next)

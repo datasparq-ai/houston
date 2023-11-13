@@ -85,7 +85,6 @@ func (a *API) checkKey(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		key := ""
 		// the webhook route does not require a key in the header, because it's in the path
-		fmt.Println(r.URL.Path)
 		if strings.HasPrefix(r.URL.Path, "/api/v1/key/") {
 			key = strings.TrimPrefix(r.URL.Path, "/api/v1/key/")
 		} else {

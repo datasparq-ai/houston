@@ -33,7 +33,7 @@ func main() {
 				Use:   "version",
 				Short: "Print the version number",
 				Run: func(c *cobra.Command, args []string) {
-					fmt.Println("v0.6.0")
+					fmt.Println("v0.6.1")
 				},
 			}
 			return
@@ -147,6 +147,7 @@ func main() {
 				},
 			}
 			createCmd.Flags().String("config", "", "path to a config file")
+			createCmd.Flags().Bool("stress-test", false, "activate stress test with 500+ missions running at the same time")
 			return
 		}())
 
