@@ -84,7 +84,11 @@ func HandleCommandLineError(err error) {
 				" See the docs for a guide on creating keys: https://github.com/datasparq-ai/houston/blob/main/docs/keys.md" + end)
 	case *model.PlanNotFoundError:
 		fmt.Println(errorText + err.Error() + end)
+	case *json.SyntaxError:
+		fmt.Println(
+			errorText + "Couldn't parse JSON string. " + err.Error() + end)
 	default:
+		fmt.Printf("Unhandled %T\n", err)
 		panic(err)
 	}
 

@@ -111,7 +111,7 @@ func (a *API) PostMission(w http.ResponseWriter, r *http.Request) {
 
 	key := r.Header.Get("x-access-key") // key has been checked by checkKey middleware
 
-	newMissionId, err := a.CreateMissionFromPlan(key, mission.Plan, mission.Id)
+	newMissionId, err := a.CreateMissionFromPlan(key, mission.Plan, mission.Id, mission.Params)
 	if err != nil {
 		handleError(err, w)
 		return

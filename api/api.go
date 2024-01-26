@@ -249,7 +249,7 @@ func (a *API) DeleteKey(key string) error {
 // - set start time
 // - store in database
 // - return created ID
-func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId string) (string, error) {
+func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId string, missionParameters map[string]interface{}) (string, error) {
 
 	var planBytes []byte
 
@@ -342,6 +342,9 @@ func (a *API) CreateMissionFromPlan(key string, planNameOrPlan string, missionId
 	}
 	m.Id = missionId
 	m.Start = time.Now()
+
+	// TODO: set mission parameters
+	m.Params = missionParameters
 
 	// TODO: this could only be a database connection error - these should be retried at least 3 times
 	err = a.db.Set(key, m.Id, string(m.Bytes()))

@@ -48,8 +48,8 @@ func New(key string, baseUrl string) Client {
 		httpClient := &http.Client{}
 		_, err := httpClient.Do(req)
 		if err != nil {
-			fmt.Println("A base URL (e.g. 'http://localhost:8000/api/v1') was not provided, and no Houston API was not found locally. Provide the base URL with the 'HOUSTON_BASE_URL' environment variable.")
-			baseUrl = "https://callhouston.io/api/v1"
+			fmt.Println("A base URL (e.g. 'http://localhost:8000/api/v1') was not provided, and no Houston API was not found locally. Provide the base URL with the 'HOUSTON_BASE_URL' environment variable. You can start a server locally by running: houston api")
+			os.Exit(1)
 		}
 	} else if !(strings.HasPrefix(baseUrl, "http://") || strings.HasPrefix(baseUrl, "https://")) {
 		fmt.Printf("Base URL '%s' isn't a valid URL; must start with either 'http://' or 'https://'\n", baseUrl)
@@ -117,12 +117,12 @@ func loadPlan(plan string) (string, error) {
 
 // CreateMission will create a new mission from a plan or plan name. If a plan name is provided then it must correspond
 // to a plan saved with SavePlan.
-func (client *Client) CreateMission(plan string, id string) (model.MissionCreatedResponse, error) {
+func (client *Client) CreateMission(plan string, id string, params map[string]interface{}) (model.MissionCreatedResponse, error) {
 	plan, err := loadPlan(plan) // if file path was provided then load file, else do nothing
 	if err != nil {
 		panic(err)
 	}
-	res, err := client.postMissions(model.MissionCreateRequest{Plan: plan, Id: id})
+	res, err := client.postMissions(model.MissionCreateRequest{Plan: plan, Id: id, Params: params})
 	return res, err
 }
 

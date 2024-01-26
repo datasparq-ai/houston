@@ -3,9 +3,9 @@ package client
 import "fmt"
 
 // Start starts a new mission from the plan provided
-func Start(plan string, id string, stages []string, exclude []string, skip []string) error {
+func Start(plan string, id string, stages []string, exclude []string, skip []string, params map[string]interface{}) error {
 	client := New("", "")
-	mission, err := client.CreateMission(plan, id)
+	mission, err := client.CreateMission(plan, id, params)
 	if err != nil {
 		return err
 	}

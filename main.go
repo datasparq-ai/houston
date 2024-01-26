@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/datasparq-ai/houston/api"
 	"github.com/datasparq-ai/houston/client"
@@ -33,7 +34,7 @@ func main() {
 				Use:   "version",
 				Short: "Print the version number",
 				Run: func(c *cobra.Command, args []string) {
-					fmt.Println("v0.6.1")
+					fmt.Println("v0.7.0")
 				},
 			}
 			return
@@ -116,14 +117,23 @@ func main() {
 			var stages = ""
 			var exclude = ""
 			var skip = ""
+			var params = ""
 			createCmd = &cobra.Command{
 				Use:   "start",
 				Short: "Create a new mission and trigger the first stage(s)",
 				Run: func(c *cobra.Command, args []string) {
+					var parsedParams map[string]interface{}
+					if params != "" {
+						err := json.Unmarshal([]byte(params), &parsedParams)
+						if err != nil {
+							client.HandleCommandLineError(err)
+						}
+					}
 					err := client.Start(plan, missionId,
 						strings.Split(strings.Replace(stages, " ", "", -1), ","),
 						strings.Split(strings.Replace(exclude, " ", "", -1), ","),
-						strings.Split(strings.Replace(skip, " ", "", -1), ","))
+						strings.Split(strings.Replace(skip, " ", "", -1), ","),
+						parsedParams)
 					if err != nil {
 						client.HandleCommandLineError(err)
 					}
@@ -135,6 +145,7 @@ func main() {
 			createCmd.Flags().StringVarP(&stages, "stages", "s", "", "Comma separated list of stage names to be used as the starting point for the mission. \nIf not provided, all stages with no upstream stages will be triggered")
 			createCmd.Flags().StringVarP(&exclude, "exclude", "i", "", "Comma separated list of stage names to be excluded in the new mission")
 			createCmd.Flags().StringVarP(&skip, "skip", "k", "", "Comma separated list of stage names to be skipped in the new mission")
+			createCmd.Flags().StringVar(&params, "params", "", "Mission parameters as a JSON string")
 			return
 		}())
 

@@ -64,7 +64,7 @@ func TestAPI_CompletedMissions(t *testing.T) {
 		t.Fatalf("New plan has active missions.")
 	}
 
-	missionId, err := api.CreateMissionFromPlan(key, "test-plan", "")
+	missionId, err := api.CreateMissionFromPlan(key, "test-plan", "", map[string]interface{}{"foo": "bar", "d": map[string]interface{}{"fp": 3}})
 	if err != nil {
 		t.Fatalf("Failed to start a mission")
 	}

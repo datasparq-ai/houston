@@ -83,7 +83,7 @@ func demo(createCmd *cobra.Command) {
 	fmt.Printf("\u001B[37mcreating a new mission%[2]v\n", s, e)
 	fmt.Printf(">>> %[1]vhouston start%[2]v \u001B[1m-p apollo -i apollo-11%[2]v\n", s, e)
 
-	_, err = a.CreateMissionFromPlan("demo", "apollo", "apollo-11")
+	_, err = a.CreateMissionFromPlan("demo", "apollo", "apollo-11", map[string]interface{}{"foo": "bar", "biz": map[string]interface{}{"foo": "bar", "biz": 123}})
 	if err != nil {
 		panic(err)
 	}
@@ -107,7 +107,7 @@ func demo(createCmd *cobra.Command) {
 			time.Sleep(time.Duration(rand.Float32()*timeBetweenMissions) * time.Millisecond)
 			//fmt.Printf(">>> %[1]vhouston start%[2]v \u001B[1m-p apollo -i apollo-12%[2]v\n", s, e)
 			missionId := fmt.Sprintf("apollo-%v", 11+missionCount)
-			_, err = a.CreateMissionFromPlan("demo", "apollo", missionId)
+			_, err = a.CreateMissionFromPlan("demo", "apollo", missionId, nil)
 			if err != nil {
 				panic(err)
 			}

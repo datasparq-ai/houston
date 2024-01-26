@@ -35,7 +35,7 @@ func (a *API) HealthCheck() {
 
 	log.Infof("Health check: total memory usage is %v bytes", m.Alloc)
 	if int64(m.Alloc) > memoryLimitBytes {
-		log.Warnf("Houston is using more memory that the safe limit; %v out of %v bytes used.", m.Alloc, memoryLimitBytes)
+		log.Warnf("Houston is using more memory than the safe limit; %v out of %v bytes used.", m.Alloc, memoryLimitBytes)
 	}
 
 }
