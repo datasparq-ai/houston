@@ -15,10 +15,10 @@ type Response struct {
 
 type Mission struct {
 	Id         string                 `json:"i" name:"id"`
-	Name       string                 `json:"n" name:"name"`     // the plan name, note: not needed in a mission
-	Services   []string               `json:"a" name:"services"` // note: not needed in a mission but kept for convenience
+	Name       string                 `json:"n" name:"name"` // the plan name, note: not needed in a mission
+	Services   []string               `json:"a" name:"services"`
 	Stages     []*Stage               `json:"s" name:"stages"`
-	Params     map[string]interface{} `json:"p" name:"params"` // note: not needed in a mission but kept for convenience
+	Params     map[string]interface{} `json:"p" name:"params"`
 	Start      time.Time              `json:"t" name:"start"`
 	End        time.Time              `json:"e" name:"end"`
 	isComplete bool
