@@ -119,10 +119,10 @@ func (a *API) missionCanBeDeleted(key string, missionId string) bool {
 				log.Debugf("Mission '%v' will be deleted because it has no start time, which makes it invalid\n", missionId)
 				return true
 			} else {
-				if !miss.End.IsZero() && miss.End.Before(time.Now().Add(a.config.MissionExpiry)) {
+				if !miss.End.IsZero() && miss.End.Before(time.Now().Add(-1*a.config.MissionExpiry)) {
 					log.Debugf("Mission '%v' will be deleted because it ended over %s ago\n", missionId, a.config.MissionExpiry)
 					return true
-				} else if miss.Start.Before(time.Now().Add(a.config.MissionExpiry)) {
+				} else if miss.Start.Before(time.Now().Add(-1 * a.config.MissionExpiry)) {
 					log.Debugf("Mission '%v' will be deleted because it started over %s ago\n", missionId, a.config.MissionExpiry)
 					return true
 				}

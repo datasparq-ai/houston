@@ -43,7 +43,7 @@ func Test_GetMission(t *testing.T) {
 	var originalPlan model.Plan
 	_ = json.Unmarshal(data, &originalPlan)
 
-	res, err := c.CreateMission(string(data), "TestAPI_GetMission")
+	res, err := c.CreateMission(string(data), "TestAPI_GetMission", nil)
 	if err != nil {
 		t.Fatalf(`Could not create mission`)
 	}
@@ -74,7 +74,7 @@ func Test_PostMissionStage(t *testing.T) {
 	c := client.New(testKeyId, "")
 
 	data, _ := os.ReadFile("tests/test_plan.json")
-	res, err := c.CreateMission(string(data), "TestAPI_PostMissionStage")
+	res, err := c.CreateMission(string(data), "TestAPI_PostMissionStage", nil)
 	if err != nil {
 		t.Fatalf(`Could not create mission`)
 	}
@@ -126,7 +126,7 @@ func Test_PostMissionStage_StartStage_IgnoreDependencies(t *testing.T) {
 	c := client.New(testKeyId, "")
 
 	data, _ := os.ReadFile("tests/test_plan.json")
-	res, err := c.CreateMission(string(data), "TestAPI_PostMissionStage_StartStage_IgnoreDependencies")
+	res, err := c.CreateMission(string(data), "TestAPI_PostMissionStage_StartStage_IgnoreDependencies", nil)
 	if err != nil {
 		t.Fatalf(`Could not create mission`)
 	}
@@ -163,7 +163,7 @@ func Test_SavePlan(t *testing.T) {
 		t.Fatalf(`Couldn't update saved plan`)
 	}
 
-	res, err := c.CreateMission("test-plan", "")
+	res, err := c.CreateMission("test-plan", "", nil)
 	if err != nil {
 		t.Fatalf(`Couldn't create mission with newly saved plan`)
 	}
@@ -218,7 +218,7 @@ func Test_DeletePlan(t *testing.T) {
 		t.Fatalf(`Couldn't delete saved plan`)
 	}
 
-	_, err = c.CreateMission("test-plan-deleted", "")
+	_, err = c.CreateMission("test-plan-deleted", "", nil)
 	if err == nil {
 		t.Fatalf(`Created mission with deleted plan`)
 	}
@@ -283,7 +283,7 @@ func createAConflict(client *client.Client, missionId string, stage rune, errorC
 func Test_ConcurrentMissionUpdates(t *testing.T) {
 
 	c := client.New(testKeyId, "")
-	res, err := c.CreateMission("tests/test_plan_big.json", "ConcurrentMissionUpdates")
+	res, err := c.CreateMission("tests/test_plan_big.json", "ConcurrentMissionUpdates", nil)
 	if err != nil {
 		t.Fatalf("Got an error when creating mission: %s", err.Error())
 	}
