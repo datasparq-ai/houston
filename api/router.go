@@ -29,7 +29,7 @@ func (a *API) GetStatus(w http.ResponseWriter, r *http.Request) {
 // @contact.name Matt Simmons
 // @contact.email info@datasparq.ai
 
-// @license.name MIT
+// @license.name GNU General Public License version 3
 // @license.url  https://github.com/datasparq-ai/houston/blob/main/LICENSE
 
 // @host localhost:8000
