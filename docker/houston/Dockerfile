@@ -2,7 +2,7 @@
 # see docs/docker for more information
 
 # create a builder enviornment to create houston app
-FROM golang:1.23-alpine as builder
+FROM golang:1.23-alpine AS builder
 
 WORKDIR /usr/src/houston
 
